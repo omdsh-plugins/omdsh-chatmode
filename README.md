@@ -79,6 +79,20 @@ Chat claims the conversations accounted under the managed workspace, and Work
 is marked `fallback` — "a conversation in a project" is what one is when
 nothing more specific is true.
 
+**Neither companion plugin is required, and neither appears in a top-level
+`inject`.** Without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)
+there is no switch for a segment to appear in, so the two pills are simply not
+there — the dock note, the preset chip, and the derived mode itself go on
+working, because they read where the current session lives rather than the
+switch. Without
+[omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) the
+segments' tooltips name no key: this package binds nothing and registers no
+command, it only appends the chord that plugin reports for `mode.chat` and
+`mode.work` when one reaches this surface. Both services are reached from
+restricted fibers started inside `apply` — which is what keeps a missing
+companion from leaving a loader entry `pending` and failing the page's boot
+sweep, a dead UI rather than a missing segment.
+
 
 ## The preset chip belongs to the mode
 

@@ -75,6 +75,17 @@ Chat 与 Work 依然是从"当前会话住在哪"推导出来的，所以从侧�
 各自为自己作答的部分：Chat 认领记在托管工作区名下的那些对话，而 Work 标了
 `fallback`——当没有更具体的说法成立时，一段对话就是"某个项目里的一段对话"。
 
+**两个搭档插件都不是必需的，也都没有出现在顶层 `inject` 里。** 没有
+[omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 时就没有开关可供分段
+出现，那两枚 pill 干脆不存在——输入框上方那行说明、预设 chip、以及推导出来的模式
+本身照常工作，因为它们读的是"当前会话住在哪"，而不是开关。没有
+[omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) 时，分段的
+tooltip 只是不写按键：本包不绑定任何键、也不注册任何命令，只是在那个插件报出
+`mode.chat` 与 `mode.work` 的快捷键时，把它接在提示后面。两个服务都是在 `apply`
+内部启动的受限 fiber 里够到的——正是这一点，让缺一个搭档插件不至于把某条 loader
+条目留在 `pending` 上、进而让整页的启动扫描失败：那会是一个死掉的界面，而不是少
+一个分段。
+
 
 ## 预设 chip 归模式管
 

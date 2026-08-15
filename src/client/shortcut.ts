@@ -8,8 +8,8 @@
  * hand over. What it does own is the tooltip, and a switch that can be reached
  * by `⌥⌘1` should say so.
  *
- * Structural mirror rather than an import, for the reason `session-modes.ts`
- * mirrors the registry: cordis binds services by name at runtime, and a
+ * Structural mirror rather than an import, for the reason `SESSION_MODES` is a
+ * literal in `client/index.ts`: cordis binds services by name at runtime, and a
  * cross-plugin value import is a client-bundle purity error. The command ids
  * are literals for the same reason — an id is a wire name shared with a
  * document, not a symbol shared with a package.

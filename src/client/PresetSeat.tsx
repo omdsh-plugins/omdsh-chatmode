@@ -14,6 +14,7 @@
  *   shipped chip is, minus the one entry a project session cannot use.
  * - **Chat** — a plain label. The mode already fixed the composition; a menu
  *   with one row is a control that does nothing.
+ * @module @omdsh-plugins/omdsh-justchat/src/client/PresetSeat
  */
 
 import { useEffect, useState } from 'react'
