@@ -1,0 +1,81 @@
+# The `chat` agent preset: a conversation, and nothing else.
+#
+# This file is an AGENT-PLANE composition, mounted once under a standing scope
+# and joined by every session that names it. What makes it the chat preset is
+# what is NOT here: no `tool-bash`/`tool-pwsh`, no `tool-fs`/`tool-fs-search`/
+# `tool-str-replace-editor`, no `tool-skill`, no `tool-subagent*`, no
+# `tool-workflow`, no `tool-todo`, no `tool-goal`, no `plan-mode`. The model
+# composes no tool catalog at all, so a chat session cannot read, write, or
+# execute anything on the host — the point of the mode, and the reason it is
+# safe to run in a directory the user never chose.
+#
+# The web surface disables every agent-plane row in its own host composition,
+# so absence here is genuinely absence: there is no deployment-level tool row
+# left for a session on this preset to inherit.
+#
+# A service row here would need a group carrying an `isolate` realm (an
+# unrealmed provide is process-global and collides on the second preset).
+# There are none: every row below registers a prompt section or a tool and
+# provides nothing.
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+# The complete system prompt. `complete: true` means later assembly listeners
+# cannot append tool guidance or orientation to it, and runtime context
+# snapshots (working directory, environment) are suppressed — a chat agent's
+# working directory is an implementation detail of where its log lives, not
+# something to tell the model about.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    complete: true
+    includeRuntimeContext: false
+    text: >-
+      You are {{model}}, a thoughtful conversational assistant.
+
+      You are in a chat-only session: you have no tools, no filesystem access,
+      and no ability to run commands. Answer from what you know and from what
+      the user tells you. When a request genuinely needs to read a repository,
+      run something, or change files, say so plainly and suggest the user
+      switch that conversation to Work mode — do not pretend to have done it,
+      and do not describe imaginary command output as if it were real.
+
+      Match the user's language. Prefer a direct answer over a preamble, use
+      Markdown when structure helps and prose when it does not, and keep code
+      examples short enough to read at a glance.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+# A long conversation still outgrows the context window, and compaction is the
+# one agent-plane capability a tool-free session needs as much as any other.
+# `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner
+# shares this realm rather than sitting outside it; the token meter stays on
+# the host plane, where every session's projection units come from.
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── asking the user ─────────────────────────────────────────────────────────
+
+# The one model-facing row a chat agent keeps. It touches nothing on the host:
+# it renders a question in the conversation the user is already having, which
+# is the same act as replying. Remove this row for a session that may only
+# answer.
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'

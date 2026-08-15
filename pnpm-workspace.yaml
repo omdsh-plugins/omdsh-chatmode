@@ -1,0 +1,10 @@
+# pnpm ≥10 blocks any dependency shipping an install/build script until it is
+# reviewed here. Deny by default; allow only what this package's own toolchain
+# needs.
+
+allowBuilds:
+  # A transitive dependency of the build toolchain (tsdown/tsx). Its install
+  # script fetches the platform esbuild binary. Nothing this package ships
+  # reaches it at runtime — the browser bundle is rolldown's, and the node half
+  # is plain ESM.
+  esbuild: true

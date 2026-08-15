@@ -1,0 +1,27 @@
+# The omdsh-justchat bundle patch: one row, inserted over whatever the
+# profile already composed.
+#
+# This package is a PROFILE LAYER, not a harness edit. `dsh plugin --profile
+# web add @omdsh-plugins/omdsh-justchat` installs it into the profile directory
+# and appends it to `dsh.profile.bundles`, so this file is applied after
+# `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` — the harness tree
+# stays exactly as it shipped, and removing the plugin removes the row with
+# it.
+#
+# The row is dual-face, the ordinary `dsh.client` shape:
+#
+#   - node half (`lib/index.js`, loaded here) creates `<dshHome>/chat`,
+#     registers it as the managed `Chat` workspace, and installs this
+#     package's own tool-free `chat` agent preset into the harness home's
+#     writable preset root;
+#   - browser half (`lib/client.js`) is picked up by `dsh-client-modules`,
+#     which scans every loader entry for a `dsh.client` declaration — an
+#     out-of-tree row is found exactly like an in-box one.
+#
+# `workspaceRegistry` is what makes the chat directory a workspace, and it is
+# a host-plane service the base bundle already composes; the loader resolves
+# this row after it.
+
+- insert:
+    - id: justchat
+      name: '@omdsh-plugins/omdsh-justchat'
