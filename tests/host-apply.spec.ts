@@ -14,14 +14,18 @@ afterEach(async () => {
 })
 
 /** A scratch harness home plus a workspace-registry double over it. */
-async function bench(title = CHAT_WORKSPACE_TITLE) {
+async function bench(title = CHAT_WORKSPACE_TITLE, order: readonly string[] = ['w1']) {
   const home = await mkdtemp(join(tmpdir(), 'omdsh-justchat-host-'))
   homes.push(home)
   const setTitle = vi.fn(async () => {})
   const create = vi.fn(async (path: string) => ({ id: 'w1', path, title, setTitle }))
+  // The registry's display order as the plugin sees it; ids only, because the
+  // apply half reads nothing else off the list.
+  const list = vi.fn(() => order.map(id => ({ id })))
+  const insertBefore = vi.fn(async (_id: string, _beforeId?: string) => {})
   const listeners = new Map<string, (...args: unknown[]) => void>()
   const ctx = {
-    workspaceRegistry: { create },
+    workspaceRegistry: { create, list, insertBefore },
     // The web UI's language lives in the host settings document; the preset's
     // picker copy follows it, because the harness will not localize it.
     settings: { get: () => ({ preference: 'en' }) },
@@ -30,7 +34,7 @@ async function bench(title = CHAT_WORKSPACE_TITLE) {
       return () => listeners.delete(event)
     },
   } as unknown as Context
-  return { home, ctx, create, setTitle, listeners }
+  return { home, ctx, create, setTitle, list, insertBefore, listeners }
 }
 
 describe('omdsh-justchat host half', () => {
@@ -56,6 +60,20 @@ describe('omdsh-justchat host half', () => {
     const b = await bench('随便改的名字')
     await apply(b.ctx, { home: b.home })
     expect(b.setTitle).toHaveBeenCalledWith(CHAT_WORKSPACE_TITLE)
+  })
+
+  it('moves Chat to the top of the workspace order when another workspace precedes it', async () => {
+    // `create` prepends every NEW workspace, so a project directory opened
+    // after the first boot pushes Chat down; the next boot must pull it back.
+    const b = await bench(CHAT_WORKSPACE_TITLE, ['w2', 'w1'])
+    await apply(b.ctx, { home: b.home })
+    expect(b.insertBefore).toHaveBeenCalledWith('w1', 'w2')
+  })
+
+  it('leaves the workspace order alone when Chat is already first', async () => {
+    const b = await bench(CHAT_WORKSPACE_TITLE, ['w1', 'w2'])
+    await apply(b.ctx, { home: b.home })
+    expect(b.insertBefore).not.toHaveBeenCalled()
   })
 
   it('rewrites the picker copy when the UI language changes', async () => {

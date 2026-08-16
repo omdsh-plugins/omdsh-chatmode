@@ -2,14 +2,17 @@
  * Chat mode, host half. It owns the two facts the browser half cannot create
  * for itself and must be able to assume:
  *
- * 1. **The Chat workspace exists.** Chat mode's whole point is starting a
- *    conversation without picking a project directory, and a session still
- *    runs somewhere — so this plugin creates `<dshHome>/sessions/chat`, registers it,
- *    and keeps its title `Chat`. That title is the group heading in the
- *    sidebar AND the name the browser half looks the workspace up by, which
- *    is why re-asserting it every boot is a feature rather than a liberty
- *    taken with a user's data: a workspace this plugin manages must stay
- *    findable under the name the product shows for it.
+ * 1. **The Chat workspace exists, and stays where it belongs.** Chat mode's
+ *    whole point is starting a conversation without picking a project
+ *    directory, and a session still runs somewhere — so this plugin creates
+ *    `<dshHome>/sessions/chat`, registers it, keeps its title `Chat`, and
+ *    re-asserts first place in the workspace order every boot. The title is
+ *    the group heading in the sidebar AND the name the browser half looks the
+ *    workspace up by; the pin is why `create` prepending every new workspace
+ *    does not push Chat down the list. Re-asserting both every boot is a
+ *    feature rather than a liberty taken with a user's data: a workspace this
+ *    plugin manages must stay findable under the name the product shows for
+ *    it, and pinned where the product puts it.
  * 2. **The `chat` agent preset exists.** Its composition ships in this
  *    package and is installed once into the harness home's writable preset
  *    root; a person's later edits there are theirs to keep.
@@ -83,8 +86,18 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   })
 
   // `create` is idempotent per canonical path: the first boot registers the
-  // workspace (prepended into the display order), and every later one
-  // resolves the same record without touching where the user moved it.
+  // workspace (prepended into the display order), and every later one resolves
+  // the same record without touching the order.
   const workspace = await ctx.workspaceRegistry.create(path, CHAT_WORKSPACE_TITLE)
   if (workspace.title !== CHAT_WORKSPACE_TITLE) await workspace.setTitle(CHAT_WORKSPACE_TITLE)
+
+  // Pin the Chat workspace above every other workspace. `create` prepends any
+  // NEW workspace, so every project directory opened after the first boot
+  // pushes Chat down the list; re-asserting first place here is what keeps it
+  // pinned, and it matches the title re-assertion above — both are facts this
+  // plugin manages rather than the user's arrangement of its own workspaces.
+  const [first] = ctx.workspaceRegistry.list()
+  if (first !== undefined && first.id !== workspace.id) {
+    await ctx.workspaceRegistry.insertBefore(workspace.id, first.id)
+  }
 }
