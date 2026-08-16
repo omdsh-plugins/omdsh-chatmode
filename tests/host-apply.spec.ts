@@ -38,7 +38,7 @@ describe('omdsh-justchat host half', () => {
     const b = await bench()
     await apply(b.ctx, { home: b.home })
 
-    const chatDir = join(b.home, 'chat')
+    const chatDir = join(b.home, 'sessions', 'chat')
     expect((await stat(chatDir)).isDirectory()).toBe(true)
     expect(b.create).toHaveBeenCalledWith(chatDir, CHAT_WORKSPACE_TITLE)
     expect((await stat(join(b.home, USER_PRESET_DIR, CHAT_PRESET_ID))).isDirectory()).toBe(true)

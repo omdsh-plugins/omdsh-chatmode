@@ -13,11 +13,17 @@ import { fileURLToPath } from 'node:url'
 import { everyPresetMetadata, renderPresetMetadata, type PresetLocale } from './preset-copy.ts'
 
 /**
- * Directory under the harness home that Chat sessions run in. A real
- * directory, because a workspace IS one — the registry canonicalizes through
- * `fs.realpath` and refuses a path that does not exist.
+ * Path under the harness home that Chat sessions run in, relative to it. A
+ * real directory, because a workspace IS one — the registry canonicalizes
+ * through `fs.realpath` and refuses a path that does not exist.
+ *
+ * It sits under `sessions/` because that is where the harness already keeps
+ * everything belonging to a conversation rather than to a project: a chat has
+ * no project directory of its own, so its working directory is harness data,
+ * and putting it at the home's top level would have claimed the name `chat`
+ * next to `profiles/` and `settings.yaml` for one plugin's workspace.
  */
-export const CHAT_DIR_NAME = 'chat'
+export const CHAT_DIR_PATH = 'sessions/chat'
 
 /**
  * Display title of the managed Chat workspace, and the name the browser half
@@ -42,7 +48,7 @@ export const METADATA_FILE = 'preset.yml'
  * @returns the absolute chat directory path.
  */
 export async function ensureChatDirectory(home: string): Promise<string> {
-  const path = `${home}/${CHAT_DIR_NAME}`
+  const path = `${home}/${CHAT_DIR_PATH}`
   await mkdir(path, { recursive: true })
   return path
 }

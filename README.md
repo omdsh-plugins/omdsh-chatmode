@@ -13,7 +13,7 @@ The harness is a coding agent, and its New Session screen asks for a workspace b
 | The **Chat** and **Work** segments in the mode switch | Two registrations in `sessionModes`, the segment registry [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) publishes |
 | A line stating what a chat session will not do, above the composer | An entry in `conversation.input.dock` |
 | A preset chip on the new-session screen offering what the mode can use | An entry in `conversation.hero.agentPreset`, shadowing the shipped chip |
-| The **Chat** workspace group in the sidebar | A real directory (`<dshHome>/chat`) this plugin registers and keeps titled `Chat` — the sidebar renders it like any other workspace |
+| The **Chat** workspace group in the sidebar | A real directory (`<dshHome>/sessions/chat`) this plugin registers and keeps titled `Chat` — the sidebar renders it like any other workspace |
 | The **Chat Mode** agent preset | `agent-presets/chat/`, installed once into `<dshHome>/.agent-presets/` |
 | The green and blue dots on those conversations in the sidebar | The `tone` and `owns` these two segments carry; the dots themselves are painted by [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) for whatever modes are registered |
 
@@ -106,7 +106,7 @@ dsh plugin --profile web add @omdsh-plugins/omdsh-base       # the switch its se
 
 That second line is not optional decoration: without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) there are no **Chat** and **Work** pills at all. Everything else this package does goes on working — ["The switch is not this package's"](#the-switch-is-not-this-packages) says exactly what is and is not there in that state, and why it is inert rather than fatal.
 
-`dsh plugin` forwards to pnpm in `$DSH_HOME/profiles/web`, then reconciles that profile's `dsh.profile.bundles` against what is installed: this package declares `dsh.bundle`, so it joins the layer stack automatically. On the next boot the host half creates `<dshHome>/chat`, registers it as the `Chat` workspace, and installs the `chat` preset.
+`dsh plugin` forwards to pnpm in `$DSH_HOME/profiles/web`, then reconciles that profile's `dsh.profile.bundles` against what is installed: this package declares `dsh.bundle`, so it joins the layer stack automatically. On the next boot the host half creates `<dshHome>/sessions/chat`, registers it as the `Chat` workspace, and installs the `chat` preset.
 
 **Either way, `lib/` must exist before `dsh web` runs.** The loader imports `lib/index.js` directly, and a missing one is not a degraded UI — the whole profile tree fails to load:
 

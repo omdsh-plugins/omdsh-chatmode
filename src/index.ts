@@ -4,7 +4,7 @@
  *
  * 1. **The Chat workspace exists.** Chat mode's whole point is starting a
  *    conversation without picking a project directory, and a session still
- *    runs somewhere — so this plugin creates `<dshHome>/chat`, registers it,
+ *    runs somewhere — so this plugin creates `<dshHome>/sessions/chat`, registers it,
  *    and keeps its title `Chat`. That title is the group heading in the
  *    sidebar AND the name the browser half looks the workspace up by, which
  *    is why re-asserting it every boot is a feature rather than a liberty
@@ -33,7 +33,7 @@ import {
 } from './chat-home.ts'
 
 export {
-  CHAT_DIR_NAME, CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, ensureChatDirectory, ensureChatPreset,
+  CHAT_DIR_PATH, CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, ensureChatDirectory, ensureChatPreset,
   writePresetMetadata,
 } from './chat-home.ts'
 export { renderPresetMetadata, type PresetLocale } from './preset-copy.ts'

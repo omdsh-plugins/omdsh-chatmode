@@ -13,7 +13,7 @@ Harness 是编码 Agent，新建会话时要先选工作区——这本身是合
 | 模式开关里的 **Chat** 与 **Work** 两个分段 | 向 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 发布的分段注册表 `sessionModes` 的两次注册 |
 | 输入框上方一行说明「这个会话不会做什么」 | `conversation.input.dock` |
 | 新建会话页上、只给出当前模式用得上的预设的那枚 chip | `conversation.hero.agentPreset`，遮住出厂的那枚 |
-| 侧栏里的 **Chat** 分组 | 一个真实目录（`<dshHome>/chat`），由本插件注册并始终保持标题为 `Chat`，侧栏把它当普通工作区渲染 |
+| 侧栏里的 **Chat** 分组 | 一个真实目录（`<dshHome>/sessions/chat`），由本插件注册并始终保持标题为 `Chat`，侧栏把它当普通工作区渲染 |
 | **Chat Mode** Agent 预设 | `agent-presets/chat/`，首次启动时装到 `<dshHome>/.agent-presets/` |
 | 侧边栏里这些对话前面的绿点与蓝点 | 这两个分段携带的 `tone` 与 `owns`；圆点本身由 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 为所有已注册的模式统一绘制 |
 
@@ -105,7 +105,7 @@ dsh plugin --profile web add @omdsh-plugins/omdsh-base       # 它的分段要�
 
 第二行不是可有可无的装饰：没有 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)，**Chat** 与 **Work** 两枚 pill 根本不存在。本包其余的一切照常工作——[「这个开关不是本包的」](#这个开关不是本包的)写清楚了那个状态下什么在、什么不在，以及它为什么是无害的而不是致命的。
 
-`dsh plugin` 会在 `$DSH_HOME/profiles/web` 里转发给 pnpm，然后按已安装状态对账该 profile 的 `dsh.profile.bundles`：本包声明了 `dsh.bundle`，所以会自动加入层栈。下次启动时 host 侧会创建 `<dshHome>/chat`、把它注册成 `Chat` 工作区、并装好 `chat` 预设。
+`dsh plugin` 会在 `$DSH_HOME/profiles/web` 里转发给 pnpm，然后按已安装状态对账该 profile 的 `dsh.profile.bundles`：本包声明了 `dsh.bundle`，所以会自动加入层栈。下次启动时 host 侧会创建 `<dshHome>/sessions/chat`、把它注册成 `Chat` 工作区、并装好 `chat` 预设。
 
 **无论哪种装法，`dsh web` 启动前 `lib/` 必须存在。** loader 直接 import `lib/index.js`，缺了不是界面降级，而是整棵插件树加载失败：
 

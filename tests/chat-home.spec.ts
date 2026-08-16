@@ -24,10 +24,13 @@ afterEach(async () => {
 })
 
 describe('ensureChatDirectory', () => {
-  it('creates the chat directory and accepts an existing one', async () => {
+  it('creates the chat directory under sessions/ and accepts an existing one', async () => {
     const home = await scratchHome()
     const first = await ensureChatDirectory(home)
-    expect(first).toBe(join(home, 'chat'))
+    // Under `sessions/`, where the harness keeps what belongs to a
+    // conversation rather than to a project — and created even when that
+    // parent does not exist yet, which is a fresh home's state.
+    expect(first).toBe(join(home, 'sessions', 'chat'))
     // Idempotent: a second boot must not fail on the directory it made.
     await expect(ensureChatDirectory(home)).resolves.toBe(first)
   })
