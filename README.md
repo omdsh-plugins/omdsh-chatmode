@@ -53,11 +53,7 @@ A blank chat session is put on the `chat` preset through the agent-preset RPC �
 
 ## The switch is not this package's
 
-Chat and Work are two segments among however many the profile composed. The
-control they sit in, the registry they register through, and the coloured dots
-their conversations get in the sidebar all belong to
-[omdsh-base](https://github.com/omdsh-plugins/omdsh-base) — including the rule that exactly one segment is
-active, which is what lets pressing **Code** clear these two.
+Chat and Work are two segments among however many the profile composed. The control they sit in, the registry they register through, and the coloured dots their conversations get in the sidebar all belong to [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) — including the rule that exactly one segment is active, which is what lets pressing **Code** clear these two.
 
 This package reaches that switch the same way any other mode plugin does:
 
@@ -72,27 +68,9 @@ ctx.inject(['sessionModes'], (mctx) => {
 })
 ```
 
-Chat and Work stay derived from where the current session lives, so opening a
-conversation from the sidebar still moves the switch, and pressing either takes
-the column back from whatever had it. `owns` is what each answers for itself:
-Chat claims the conversations accounted under the managed workspace, and Work
-is marked `fallback` — "a conversation in a project" is what one is when
-nothing more specific is true.
+Chat and Work stay derived from where the current session lives, so opening a conversation from the sidebar still moves the switch, and pressing either takes the column back from whatever had it. `owns` is what each answers for itself: Chat claims the conversations accounted under the managed workspace, and Work is marked `fallback` — "a conversation in a project" is what one is when nothing more specific is true.
 
-**Neither companion plugin is required, and neither appears in a top-level
-`inject`.** Without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)
-there is no switch for a segment to appear in, so the two pills are simply not
-there — the dock note, the preset chip, and the derived mode itself go on
-working, because they read where the current session lives rather than the
-switch. Without
-[omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) the
-segments' tooltips name no key: this package binds nothing and registers no
-command, it only appends the chord that plugin reports for `mode.chat` and
-`mode.work` when one reaches this surface. Both services are reached from
-restricted fibers started inside `apply` — which is what keeps a missing
-companion from leaving a loader entry `pending` and failing the page's boot
-sweep, a dead UI rather than a missing segment.
-
+**Neither companion plugin is required, and neither appears in a top-level `inject`.** Without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) there is no switch for a segment to appear in, so the two pills are simply not there — the dock note, the preset chip, and the derived mode itself go on working, because they read where the current session lives rather than the switch. Without [omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) the segments' tooltips name no key: this package binds nothing and registers no command, it only appends the chord that plugin reports for `mode.chat` and `mode.work` when one reaches this surface. Both services are reached from restricted fibers started inside `apply` — which is what keeps a missing companion from leaving a loader entry `pending` and failing the page's boot sweep, a dead UI rather than a missing segment.
 
 ## The preset chip belongs to the mode
 
@@ -105,9 +83,11 @@ So this plugin takes the chip and filters the roster by mode:
 
 It also re-derives what it shows whenever the current session changes, so moving between workspaces reports *that* session's composition rather than the one you left.
 
-Taking the seat is done with the slot system's own rule rather than around it. `conversation.hero.agentPreset` is a `single` cell, and a single cell goes to the **lowest priority**, so this package registers at `priority: -1` over `ui-agent-preset`'s default `0`. Nothing is unregistered: withdrawing this plugin's row hands the seat straight back to the shipped chip. ([hero-seat-shadow.client.spec.ts](tests/hero-seat-shadow.client.spec.ts) drives that against the real registry, including the collision a same-priority registration would throw.)
+Taking the seat is done with the slot system's own rule rather than around it. `conversation.hero.agentPreset` is a `single` cell, and a single cell goes to the **lowest priority**, so this package registers at `priority: -1` over `ui-agent-preset`'s default `0`. Nothing is unregistered: withdrawing this plugin's row hands the seat straight back to the shipped chip. ([hero-seat-shadow.client.spec.ts](https://github.com/omdsh-plugins/omdsh-justchat/blob/HEAD/tests/hero-seat-shadow.client.spec.ts) drives that against the real registry, including the collision a same-priority registration would throw.)
 
 Preset **names** still come from the harness. It ships its four presets with Chinese metadata on disk and localizes them in the browser, out of the `settings.agentPreset` dictionary `ui-agent-preset` registers — so this chip reads that dictionary at call time instead of copying it. A locally authored preset is never translated: its file is its copy. Where the dictionary is absent (a composition without `ui-agent-preset`), the lookup echoes its key back and the chip falls back to file metadata rather than showing a locale key.
+
+The chip is the only part of that screen this package owns. The blank-chat hero around it is still the shipped one, and the harness publishes no seam for the rest of it; upstream it would be two small additions — a chain around the hero's intent surface, and a way for whoever draws it to own the composer's call to action.
 
 ## The chat agent
 
@@ -115,7 +95,16 @@ Preset **names** still come from the harness. It ships its four presets with Chi
 
 That is what makes running in a directory the user never chose safe: there is nothing in the session that can reach it.
 
+That persona is the complete system prompt: no tool guidance, no runtime context snapshot, and an explicit instruction to say so rather than pretend when a request needs a repository. Nothing else this package ships reaches a model request — it assembles no provider request of its own, and the preset it installs shortens one, because an agent with no tools sends no tool catalog.
+
 ## Install
+
+```sh
+dsh plugin --profile web add @omdsh-plugins/omdsh-justchat
+dsh plugin --profile web add @omdsh-plugins/omdsh-base       # the switch its segments appear in
+```
+
+That second line is not optional decoration: without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) there are no **Chat** and **Work** pills at all. Everything else this package does goes on working — ["The switch is not this package's"](#the-switch-is-not-this-packages) says exactly what is and is not there in that state, and why it is inert rather than fatal.
 
 `dsh plugin` forwards to pnpm in `$DSH_HOME/profiles/web`, then reconciles that profile's `dsh.profile.bundles` against what is installed: this package declares `dsh.bundle`, so it joins the layer stack automatically. On the next boot the host half creates `<dshHome>/chat`, registers it as the `Chat` workspace, and installs the `chat` preset.
 
@@ -157,7 +146,7 @@ allowBuilds:
 
 then re-run the `add`, and `dsh web`. That entry authorizes this package to run install-time code on your machine — here, `tsc` and `tsdown` — so pin a commit rather than tracking a branch, and read the diff before moving the pin.
 
-### Removing it
+Remove it the same way:
 
 ```sh
 dsh plugin --profile web remove @omdsh-plugins/omdsh-justchat
@@ -165,9 +154,16 @@ dsh plugin --profile web remove @omdsh-plugins/omdsh-justchat
 
 The chat directory, its session logs, and the preset are left on disk — removing a plugin is not a request to delete conversations.
 
-## Two harness sources
+## Commands
 
-Which harness this plugin compiles against is a switch, the shape [`omdsh-desktop`](https://github.com/omdsh-plugins/omdsh-desktop) uses for the same problem:
+```sh
+pnpm install
+pnpm run build       # tsc emits lib/types, tsdown bundles both halves
+pnpm run typecheck   # package sources, then the specs
+pnpm run test        # vitest — requires local mode, see below
+```
+
+Which harness this package compiles against is a switch:
 
 ```sh
 pnpm run harness:npm                             # the committed state: the pinned release
@@ -175,34 +171,32 @@ pnpm run harness:local ../../deepseek-harness    # a sibling checkout, for devel
 pnpm run check:harness-pin                       # fails while any dependency is linked
 ```
 
-**Only the registry state may be committed.** A `link:` specifier is resolved against the manifest that declares it, so a committed one bakes one machine's directory layout into the package — and pnpm does not fail loudly when it is wrong: it creates a dangling symlink, reports a successful install, and the build dies later with `TS2307` on every harness import. It would also break `prepare` for everyone installing by git URL. `check:harness-pin` exists to catch that before a commit.
-
-Local mode needs the checkout installed and built (`pnpm run build` there) — pnpm does not install a linked package's own dependencies.
+A development round trip is those two sets interleaved:
 
 ```sh
 pnpm run harness:local ../../deepseek-harness && pnpm install
-pnpm run typecheck   # package sources, then the specs
-pnpm run test        # vitest
-pnpm run build       # tsc emits lib/types, tsdown bundles both halves
+pnpm run typecheck
+pnpm run test
+pnpm run build
 pnpm run harness:npm && pnpm install   # before committing
 ```
+
+## Two harness sources
+
+The switch above is the shape [`omdsh-desktop`](https://github.com/omdsh-plugins/omdsh-desktop) uses for the same problem, and it exists because the two sources are not interchangeable.
+
+**Only the registry state may be committed.** A `link:` specifier is resolved against the manifest that declares it, so a committed one bakes one machine's directory layout into the package — and pnpm does not fail loudly when it is wrong: it creates a dangling symlink, reports a successful install, and the build dies later with `TS2307` on every harness import. It would also break `prepare` for everyone installing by git URL. `check:harness-pin` exists to catch that before a commit.
+
+Local mode needs the checkout installed and built (`pnpm run build` there) — pnpm does not install a linked package's own dependencies.
 
 `pnpm run test` requires local mode. A published harness package ships `lib/` and `.d.ts` but no sources, and its browser half is a loader bundle that expects `window.__ModuleLoader__` — nothing a test runner can import. Types are all the *compiler* needs, which is why the registry state still builds; the specs alias those specifiers to real sources and say so if they cannot find any.
 
 The browser half is bundled as a loader artifact (`lib/client.js`) exactly as the harness's own client packages are: platform modules stay external and resolve through the shell's frozen module table, everything else inlines, and a purity gate fails the build on a cross-plugin value import. Rebuild it before probing a live `dsh web` — the registry serves `lib/client.js`, not sources.
 
-## Model Experience
-
-The `chat` preset's persona is the complete system prompt: no tool guidance, no runtime context snapshot, and an explicit instruction to say so rather than pretend when a request needs a repository. Nothing else this package ships reaches a model request.
-
-#### KV Cache effect
-
-None. The plugin assembles no provider request; the preset it installs shortens one, because an agent with no tools sends no tool catalog.
-
-## Known Limitations and Deferred Work
+## Known limitations
 
 - **Search results carry no dot.** They are a two-line stack, so a leading dot would take a line of its own instead of sitting in front of the title; the second line already names the workspace.
-- **The blank-chat screen is the shipped one.** It still shows the workspace chip (reading `Chat`) and the shipped headline and composer placeholder ("Describe what you want to build"), which is written for work. The harness publishes no seam for either, and this package deliberately does not reach into another plugin's DOM to fake one. Upstream this would be two small additions — a chain around the hero's intent surface, and a way for whoever draws it to own the composer's call to action.
+- **The blank-chat screen is the shipped one.** It still shows the workspace chip (reading `Chat`) and the shipped headline and composer placeholder ("Describe what you want to build"), which is written for work. The harness publishes no seam for either, and this package deliberately does not reach into another plugin's DOM to fake one.
 - **The switch is centred by measurement.** It rides the frame-wide overlay layer and finds the conversation column through the published `data-conversation-scroll` attribute; a deployment whose centre column is some other plugin's gets a frame-centred switch instead. A switch that has not been measured yet is also one that never parks: with no zone to be revealed from, taking it away would be taking it for good.
 - **A pointer already sitting in the reveal zone is not seen until it moves.** The zone is tested on pointer movement, and a pointer that has not moved since the page loaded has reported nothing — so the switch parks on schedule, and the first small move brings it straight back. Polling the cursor position is the only alternative, and it costs more than the case is worth.
 - **The Chat workspace is found by its title.** The host half re-asserts `Chat` on every boot, so renaming it in the sidebar does not survive a restart. That title is the group heading the product shows, which is what makes matching on it a product fact rather than a hidden coupling — but a second workspace a user titles `Chat` would shadow it.
