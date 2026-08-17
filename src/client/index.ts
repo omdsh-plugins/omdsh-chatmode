@@ -78,6 +78,14 @@ export const CHAT_TONE = 'var(--dsw-alias-state-success-primary)'
 export const WORK_TONE = 'var(--dsw-static-deepseek-450)'
 
 /**
+ * The segment id this package's everything-else posture answers to — the same
+ * word `omdsh-base`'s baseline uses, because it is the same posture under two
+ * suppliers. Named here so the one place that asks "does another mode claim
+ * this conversation" cannot drift from the registration below.
+ */
+export const WORK_SEGMENT = 'work'
+
+/**
  * The switch's glyphs, built once.
  *
  * Module scope on purpose: the registry compares icons by identity, so an
@@ -101,12 +109,36 @@ export function apply(ctx: ClientContext): void {
 
   const { sessions, workspaces } = resolveServices(ctx)
 
+  /**
+   * The mode registry, while one is composed.
+   *
+   * Held rather than passed, because the controller is built here and the
+   * registry is only resolved on the restricted fiber below — and it can go
+   * away again under HMR. Everything read through it has an answer for
+   * `undefined`, which is the same answer a profile without the mode system
+   * gets: this plugin's derived mode goes on being derived, with no switch to
+   * report it to.
+   */
+  let modes: SessionModes | undefined
+
   const controller = new ChatModeController({
     sessions: sessions.list,
     workspaces: workspaces.list,
     open: (id) => { sessions.open(id) },
     clear: () => { sessions.clear() },
     startSession: (workspaceId) => { workspaces.startSession(workspaceId) },
+    // What the column is SHOWING, which is how entering a posture stays in the
+    // project the user is looking at: a mode whose column is a terminal shows
+    // a project without selecting anything in it, so the selection alone would
+    // send this gesture to whichever project was open before that.
+    columnCwd: () => modes?.column.getSnapshot()?.cwd,
+    // Work is the everything-else posture, so the conversations it may land on
+    // are the ones no other segment claims. Nobody registered is nobody
+    // claiming, which is the right reading with no switch composed.
+    claimedElsewhere: (sessionId) => {
+      const owner = modes?.modeOf(sessionId)
+      return owner !== undefined && owner.id !== WORK_SEGMENT
+    },
   })
 
   ctx.effect(() => controller.start(), 'omdsh-chatmode: derived session mode')
@@ -129,10 +161,16 @@ export function apply(ctx: ClientContext): void {
   // it. Off is two missing pills, not a dead page — see rule 9 of the
   // conventions for why this is not an `inject`.
   ctx.inject([SESSION_MODES], (mctx: ClientContext) => {
-    const modes = mctx.get(SESSION_MODES) as unknown as SessionModes | undefined
+    const registry = mctx.get(SESSION_MODES) as unknown as SessionModes | undefined
     // Reachable when the name is provided by a fiber that is not active.
-    if (modes === undefined) return
-    mountSegments(mctx, modes, controller, sessions)
+    if (registry === undefined) return
+    // Held for the two questions the controller asks of it, and released with
+    // the fiber so a registry that unloads leaves no reference behind.
+    mctx.effect(() => {
+      modes = registry
+      return () => { modes = undefined }
+    }, 'omdsh-chatmode: the registry the gestures read')
+    mountSegments(mctx, registry, controller, sessions)
   })
 }
 

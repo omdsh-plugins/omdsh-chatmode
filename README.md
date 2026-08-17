@@ -26,11 +26,26 @@ A session is a chat exactly when it is accounted under the managed Chat workspac
 Pressing a segment is therefore a navigation rather than a state write:
 
 - **Chat** — reopen the chat you left, or start one in the Chat workspace.
-- **Work** — reopen the working conversation you left, else start one in the first project workspace, else fall back to the shipped "Choose workspace" screen.
+- **Work** — reopen the working conversation you left **in the project you are in**, else that project's most recent one, else start one there. See [Switching stays in the project you are in](#switching-stays-in-the-project-you-are-in).
 
 Because the mode is derived, **every navigation re-asserts it** — including one that lands in the same mode. Opening a second working conversation looks like nothing happening from a "work → work" reading, but it is the user saying which conversation they want to see, and a contributed posture may be holding the column over it. Re-deriving on the navigation is what hands that column back.
 
 With one exception: a conversation **another mode owns** is that mode's to report. Taking the column on its navigation would only have it taken back a moment later, once the owner answers the same event — a flicker of the wrong column, and whatever that mode was showing torn down and rebuilt for nothing. A *press* is never that: pressing Work on a Code conversation is asking to read it in the web view, which is a change of column with no change of conversation, and the only thing that could say so is the press itself.
+
+## Switching stays in the project you are in
+
+Pressing a segment moves between ways of looking at one project, not between projects. So the question Work asks first is *which project is on screen* — and the answer is not the selected conversation's.
+
+It cannot be: a posture whose column is not the web conversation shows a project **without selecting anything in it**. Code mode's terminal is exactly that, deliberately — a Code conversation is shown, never selected, because selecting one is what makes this host resume a log another process owns. So while you look at a terminal in project B, the runtime's selection is still whatever you had open in project A, and a Work that read the selection took you back to A.
+
+The project on screen is `sessionModes.column`, which [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) publishes for exactly this class of question. With one in hand, every answer stays inside it: the conversation last left there, else its most recent one, else a new one started there — never another project's, however recently it was open.
+
+Two exclusions decide "its most recent one":
+
+- **Conversations another posture claims.** Opening a Code conversation shows a terminal, which would put the column straight back into the mode the press was leaving. The registry answers this (`modeOf`), so it stays right as modes are added.
+- **Blank ones, unless they are all there is.** A blank conversation is recent because it was *created* recently, not because anything was said in it, and a project collects them — one per New Session pressed and walked away from. When the project has nothing else, the blank IS its New Session row and opening it beats starting another beside it.
+
+Only a column in no project of its own falls through to the memory that spans projects: a chat, or a page with no mode system at all. "Which project am I in" has no answer there, and "take me back to work" does.
 
 ## New Session belongs to the mode it was pressed in
 
@@ -222,6 +237,7 @@ The browser half is bundled as a loader artifact (`lib/client.js`) exactly as th
 
 ## Known limitations
 
+- **The project memory is per tab, and per run.** Which conversation you left in each project is held in the page, not written down — a reload starts from each project's most recent conversation instead. That is the same trade the derived mode makes: nothing stored is nothing that can disagree with the screen.
 - **Search results carry no dot.** They are a two-line stack, so a leading dot would take a line of its own instead of sitting in front of the title; the second line already names the workspace.
 - **The blank-chat screen is the shipped one.** It still shows the workspace chip (reading `Chat`) and the shipped headline and composer placeholder ("Describe what you want to build"), which is written for work. The harness publishes no seam for either, and this package deliberately does not reach into another plugin's DOM to fake one.
 - **The switch is centred by measurement.** It rides the frame-wide overlay layer and finds the conversation column through the published `data-conversation-scroll` attribute; a deployment whose centre column is some other plugin's gets a frame-centred switch instead. A switch that has not been measured yet is also one that never parks: with no zone to be revealed from, taking it away would be taking it for good.

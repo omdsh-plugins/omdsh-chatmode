@@ -24,13 +24,13 @@ function workspace(id: string, title: string, sessionIds: SessionId[] = []): Wor
 }
 
 /** One session summary row. */
-function row(id: string, extra: { blank?: boolean } = {}) {
+function row(id: string, extra: { blank?: boolean; updatedAt?: number } = {}) {
   return {
     id: sid(id),
     displayTitle: id,
     running: false,
     blank: extra.blank ?? false,
-    updatedAt: 1,
+    updatedAt: extra.updatedAt ?? 1,
   }
 }
 
@@ -39,6 +39,10 @@ function bench(options: {
   workspaces?: WorkspaceView[]
   sessions?: ReturnType<typeof row>[]
   current?: string
+  /** What the column is SHOWING, when a mode system reports a directory. */
+  columnCwd?: string
+  /** Conversations another posture claims, which Work may not land on. */
+  claimed?: string[]
 } = {}) {
   const rows = options.sessions ?? []
   const sessions = createSnapshotStore<SessionListState>({
@@ -62,9 +66,22 @@ function bench(options: {
   const open = vi.fn()
   const clear = vi.fn()
   const startSession = vi.fn()
-  const controller = new ChatModeController({ sessions, workspaces, open, clear, startSession })
+  let columnCwd = options.columnCwd
+  const controller = new ChatModeController({
+    sessions,
+    workspaces,
+    open,
+    clear,
+    startSession,
+    columnCwd: () => columnCwd,
+    claimedElsewhere: (sessionId: SessionId) => (options.claimed ?? []).includes(sessionId),
+  })
   const stop = controller.start()
-  return { controller, sessions, workspaces, open, clear, startSession, stop }
+  return {
+    controller, sessions, workspaces, open, clear, startSession, stop,
+    /** Move the column to another project, the way pressing a mode does. */
+    showColumn: (cwd: string | undefined) => { columnCwd = cwd },
+  }
 }
 
 /** Publish a new current session into the list store. */
@@ -202,6 +219,124 @@ describe('ChatModeController: entering a mode', () => {
     expect(chatOnly.clear).toHaveBeenCalledTimes(1)
     expect(chatOnly.startSession).not.toHaveBeenCalled()
     chatOnly.stop()
+  })
+
+  it('enters work in the project the COLUMN is in, not the one last selected', () => {
+    // The bug this ordering exists for: a posture whose column is a terminal
+    // shows project B without selecting anything in it, so the selection is
+    // still project A's conversation — and pressing Work walked the user back
+    // to A.
+    const b = bench({
+      workspaces: [
+        workspace('chat', CHAT_WORKSPACE_TITLE),
+        workspace('a', 'a', [sid('a1')]),
+        workspace('b', 'b', [sid('b1')]),
+      ],
+      sessions: [row('a1'), row('b1')],
+      current: 'a1',
+    })
+    // Code mode took the column for project B; the selection never moved.
+    b.showColumn('/w/b')
+    b.controller.enterWork()
+    expect(b.open).toHaveBeenCalledWith(sid('b1'))
+    b.stop()
+  })
+
+  it('returns to the conversation it left in THIS project', () => {
+    const b = bench({
+      workspaces: [
+        workspace('chat', CHAT_WORKSPACE_TITLE),
+        workspace('b', 'b', [sid('b1'), sid('b2')]),
+      ],
+      sessions: [row('b1', { updatedAt: 9 }), row('b2', { updatedAt: 1 })],
+      current: 'b1',
+    })
+    // Read the older one, then go somewhere else entirely.
+    select(b.sessions, 'b2')
+    b.showColumn('/w/b')
+    b.controller.enterWork()
+    // Not b1, which is the project's most recent: the memory of this project
+    // outranks its recency, which is what "the conversation you left" means.
+    expect(b.open).toHaveBeenCalledWith(sid('b2'))
+    b.stop()
+  })
+
+  it('never lands on a conversation another posture claims', () => {
+    // Opening a Code conversation shows a terminal, which would put the column
+    // straight back into the mode this press is leaving.
+    const b = bench({
+      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE), workspace('b', 'b', [sid('code-1'), sid('b1')])],
+      sessions: [row('code-1', { updatedAt: 9 }), row('b1', { updatedAt: 1 })],
+      claimed: ['code-1'],
+      columnCwd: '/w/b',
+    })
+    b.controller.enterWork()
+    expect(b.open).toHaveBeenCalledWith(sid('b1'))
+    b.stop()
+  })
+
+  it('comes back to what was said, not to a blank left behind beside it', () => {
+    // A project collects blank conversations, one per New Session pressed and
+    // walked away from, and each is "recent" because it was created recently.
+    // Landing on an empty prompt while the project holds real work is wrong.
+    const b = bench({
+      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE), workspace('b', 'b', [sid('b1'), sid('blank')])],
+      sessions: [row('b1', { updatedAt: 1 }), row('blank', { blank: true, updatedAt: 9 })],
+      columnCwd: '/w/b',
+    })
+    b.controller.enterWork()
+    expect(b.open).toHaveBeenCalledWith(sid('b1'))
+    b.stop()
+  })
+
+  it('opens the blank when a blank is all the project has', () => {
+    // That row IS the project's New Session; opening it beats starting a
+    // further conversation beside it.
+    const b = bench({
+      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE), workspace('b', 'b', [sid('blank')])],
+      sessions: [row('blank', { blank: true })],
+      columnCwd: '/w/b',
+    })
+    b.controller.enterWork()
+    expect(b.open).toHaveBeenCalledWith(sid('blank'))
+    expect(b.startSession).not.toHaveBeenCalled()
+    b.stop()
+  })
+
+  it('starts one in this project rather than leaving for a project that has one', () => {
+    const b = bench({
+      workspaces: [
+        workspace('chat', CHAT_WORKSPACE_TITLE),
+        workspace('a', 'a', [sid('a1')]),
+        workspace('b', 'b', []),
+      ],
+      sessions: [row('a1')],
+      current: 'a1',
+      columnCwd: '/w/b',
+    })
+    b.controller.enterWork()
+    expect(b.open).not.toHaveBeenCalled()
+    expect(b.startSession).toHaveBeenCalledWith(wid('b'))
+    b.stop()
+  })
+
+  it('falls back to the memory that spans projects when the column is a chat', () => {
+    // Pressing Work from a chat is asking to LEAVE Chat, and the directory
+    // chats are stored in is not a project to work in — so "take me back to
+    // work" is the honest answer there.
+    const b = bench({
+      workspaces: [
+        workspace('chat', CHAT_WORKSPACE_TITLE, [sid('c1')]),
+        workspace('a', 'a', [sid('a1')]),
+      ],
+      sessions: [row('c1'), row('a1')],
+      current: 'a1',
+    })
+    select(b.sessions, 'c1')
+    b.showColumn('/w/chat')
+    b.controller.enterWork()
+    expect(b.open).toHaveBeenCalledWith(sid('a1'))
+    b.stop()
   })
 
   it('forgets a remembered session the list no longer carries', () => {
