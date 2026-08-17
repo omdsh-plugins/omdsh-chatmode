@@ -48,17 +48,14 @@ const CORDIS_VERSION = '^4.0.1'
 /** Every harness package this plugin builds against, and where it lives in a checkout. */
 const HARNESS_PACKAGES: Readonly<Record<string, string>> = {
   '@deepseek-ai/cordis': join('vendor', 'cordis'),
-  '@deepseek-ai/dsh-api-remotes': join('packages', 'api', 'remotes'),
   '@deepseek-ai/dsh-client-locale': join('packages', 'client', 'locale'),
   '@deepseek-ai/dsh-client-runtime': join('packages', 'client', 'runtime'),
-  '@deepseek-ai/dsh-client-ui-conversation': join('packages', 'client', 'ui-conversation'),
   '@deepseek-ai/dsh-client-ui-layout': join('packages', 'client', 'ui-layout'),
   '@deepseek-ai/dsh-client-ui-primitives': join('packages', 'client', 'ui-primitives'),
   '@deepseek-ai/dsh-client-ui-slots': join('packages', 'client', 'ui-slots'),
   '@deepseek-ai/dsh-client-web-react': join('packages', 'client', 'web-react'),
   '@deepseek-ai/dsh-home-paths': join('packages', 'util', 'home-paths'),
   '@deepseek-ai/dsh-invariants': join('packages', 'runtime-diagnostics', 'invariants'),
-  '@deepseek-ai/dsh-settings': join('packages', 'settings', 'settings'),
   '@deepseek-ai/dsh-workspace': join('packages', 'workspace', 'workspace'),
 }
 

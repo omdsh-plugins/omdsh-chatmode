@@ -1,11 +1,11 @@
-// The host half: the Chat workspace and the preset, both idempotent.
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+// The host half: the Chat workspace it manages, and the preset it retires.
+import { mkdtemp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { apply } from '../src/index.ts'
-import { CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, USER_PRESET_DIR } from '../src/chat-home.ts'
+import { apply, inject } from '../src/index.ts'
+import { CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, COMPOSITION_FILE, USER_PRESET_DIR } from '../src/chat-home.ts'
 
 const homes: string[] = []
 
@@ -23,34 +23,53 @@ async function bench(title = CHAT_WORKSPACE_TITLE, order: readonly string[] = ['
   // apply half reads nothing else off the list.
   const list = vi.fn(() => order.map(id => ({ id })))
   const insertBefore = vi.fn(async (_id: string, _beforeId?: string) => {})
-  const listeners = new Map<string, (...args: unknown[]) => void>()
-  const ctx = {
-    workspaceRegistry: { create, list, insertBefore },
-    // The web UI's language lives in the host settings document; the preset's
-    // picker copy follows it, because the harness will not localize it.
-    settings: { get: () => ({ preference: 'en' }) },
-    on: (event: string, listener: (...args: unknown[]) => void) => {
-      listeners.set(event, listener)
-      return () => listeners.delete(event)
-    },
-  } as unknown as Context
-  return { home, ctx, create, setTitle, list, insertBefore, listeners }
+  const ctx = { workspaceRegistry: { create, list, insertBefore } } as unknown as Context
+  return { home, ctx, create, setTitle, list, insertBefore }
+}
+
+/** Put one copy of the retired preset in a home, as an older version did. */
+async function installPreset(home: string, composition: string): Promise<string> {
+  const target = join(home, USER_PRESET_DIR, CHAT_PRESET_ID)
+  await mkdir(target, { recursive: true })
+  await writeFile(join(target, COMPOSITION_FILE), composition)
+  return target
 }
 
 describe('omdsh-chatmode host half', () => {
-  it('creates the chat directory, registers it, and installs the preset', async () => {
+  it('needs the workspace registry, and nothing else', () => {
+    // The settings service went with the preset: nothing on disk follows the
+    // UI language any more, so there is no document to read.
+    expect(inject).toEqual(['workspaceRegistry'])
+  })
+
+  it('creates the chat directory and registers it', async () => {
     const b = await bench()
     await apply(b.ctx, { home: b.home })
 
     const chatDir = join(b.home, 'sessions', 'chat')
     expect((await stat(chatDir)).isDirectory()).toBe(true)
     expect(b.create).toHaveBeenCalledWith(chatDir, CHAT_WORKSPACE_TITLE)
-    expect((await stat(join(b.home, USER_PRESET_DIR, CHAT_PRESET_ID))).isDirectory()).toBe(true)
-    // Written in the UI's language, not both at once.
-    const metadata = await readFile(join(b.home, USER_PRESET_DIR, CHAT_PRESET_ID, 'preset.yml'), 'utf8')
-    expect(/[一-鿿]/u.test(metadata)).toBe(false)
+    // Nothing is installed into the writable preset root any more.
+    await expect(readdir(join(b.home, USER_PRESET_DIR))).rejects.toThrow()
     // The registry already gave it the right title; nothing to correct.
     expect(b.setTitle).not.toHaveBeenCalled()
+  })
+
+  it('takes back the preset an earlier version installed', async () => {
+    const b = await bench()
+    const released = await readFile(join(import.meta.dirname, 'fixtures', 'agent.cordis.yml'), 'utf8')
+    const target = await installPreset(b.home, released)
+    await apply(b.ctx, { home: b.home })
+    // Every surface reads that root, so a preset left there goes on offering
+    // a mode this product no longer has.
+    await expect(readdir(target)).rejects.toThrow()
+  })
+
+  it('leaves a composition someone made their own', async () => {
+    const b = await bench()
+    const target = await installPreset(b.home, '# mine\n')
+    await apply(b.ctx, { home: b.home })
+    expect(await readdir(target)).toEqual([COMPOSITION_FILE])
   })
 
   it('re-asserts the title of a workspace someone renamed', async () => {
@@ -74,22 +93,6 @@ describe('omdsh-chatmode host half', () => {
     const b = await bench(CHAT_WORKSPACE_TITLE, ['w1', 'w2'])
     await apply(b.ctx, { home: b.home })
     expect(b.insertBefore).not.toHaveBeenCalled()
-  })
-
-  it('rewrites the picker copy when the UI language changes', async () => {
-    const b = await bench()
-    await apply(b.ctx, { home: b.home })
-    const path = join(b.home, USER_PRESET_DIR, CHAT_PRESET_ID, 'preset.yml')
-    expect(/[一-鿿]/u.test(await readFile(path, 'utf8'))).toBe(false)
-
-    b.listeners.get('settings/updated')?.('locale', { preference: 'zh' })
-    await vi.waitFor(async () => {
-      expect(/[一-鿿]/u.test(await readFile(path, 'utf8'))).toBe(true)
-    })
-
-    // Another namespace committing is not this plugin's business.
-    b.listeners.get('settings/updated')?.('ui-theme', { theme: 'dark' })
-    expect(/[一-鿿]/u.test(await readFile(path, 'utf8'))).toBe(true)
   })
 
   it('is safe to run again', async () => {

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-// The derived mode, the two navigations, and the tool-free composition a
-// blank chat session is put on.
+// The derived mode and the two navigations. Nothing about compositions: the
+// mode decides where a conversation lives and stopped deciding what it runs.
 import { describe, expect, it, vi } from 'vitest'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   SessionId, SessionListState, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import { CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, ChatModeController } from '../src/client/chat-mode.ts'
+import { CHAT_WORKSPACE_TITLE, ChatModeController } from '../src/client/chat-mode.ts'
 
 const sid = (id: string): SessionId => id as SessionId
 const wid = (id: string): WorkspaceId => id as WorkspaceId
@@ -24,14 +24,13 @@ function workspace(id: string, title: string, sessionIds: SessionId[] = []): Wor
 }
 
 /** One session summary row. */
-function row(id: string, extra: { blank?: boolean; agentPreset?: string } = {}) {
+function row(id: string, extra: { blank?: boolean } = {}) {
   return {
     id: sid(id),
     displayTitle: id,
     running: false,
     blank: extra.blank ?? false,
     updatedAt: 1,
-    ...(extra.agentPreset === undefined ? {} : { agentPreset: extra.agentPreset }),
   }
 }
 
@@ -63,12 +62,9 @@ function bench(options: {
   const open = vi.fn()
   const clear = vi.fn()
   const startSession = vi.fn()
-  const applyChatPreset = vi.fn(async () => {})
-  const controller = new ChatModeController({
-    sessions, workspaces, open, clear, startSession, applyChatPreset,
-  })
+  const controller = new ChatModeController({ sessions, workspaces, open, clear, startSession })
   const stop = controller.start()
-  return { controller, sessions, workspaces, open, clear, startSession, applyChatPreset, stop }
+  return { controller, sessions, workspaces, open, clear, startSession, stop }
 }
 
 /** Publish a new current session into the list store. */
@@ -220,74 +216,5 @@ describe('ChatModeController: entering a mode', () => {
     expect(b.open).not.toHaveBeenCalled()
     expect(b.startSession).toHaveBeenCalledWith(wid('chat'))
     b.stop()
-  })
-})
-
-describe('ChatModeController: the chat composition', () => {
-  it('puts a blank chat session on the tool-free preset exactly once', () => {
-    const b = bench({
-      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE, [sid('c1')])],
-      sessions: [row('c1', { blank: true })],
-      current: 'c1',
-    })
-    expect(b.applyChatPreset).toHaveBeenCalledWith(sid('c1'))
-
-    // A later list update must not re-apply — a user who deliberately picked
-    // another preset for this chat keeps it.
-    b.sessions.set({ ...b.sessions.getSnapshot(), byId: { [sid('c1')]: row('c1', { blank: true }) } })
-    expect(b.applyChatPreset).toHaveBeenCalledTimes(1)
-    b.stop()
-  })
-
-  it('leaves a started session and an already-composed one alone', () => {
-    const started = bench({
-      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE, [sid('c1')])],
-      sessions: [row('c1', { blank: false })],
-      current: 'c1',
-    })
-    // The host refuses the swap once history exists, so asking is pointless.
-    expect(started.applyChatPreset).not.toHaveBeenCalled()
-    started.stop()
-
-    const composed = bench({
-      workspaces: [workspace('chat', CHAT_WORKSPACE_TITLE, [sid('c1')])],
-      sessions: [row('c1', { blank: true, agentPreset: CHAT_PRESET_ID })],
-      current: 'c1',
-    })
-    expect(composed.applyChatPreset).not.toHaveBeenCalled()
-    composed.stop()
-  })
-
-  it('leaves the session on its default preset when the host refuses', async () => {
-    const failing = vi.fn(async () => { throw new Error('unknown preset "chat"') })
-    const sessions = createSnapshotStore<SessionListState>({
-      ids: [sid('c1')],
-      byId: { c1: row('c1', { blank: true }) },
-      current: sid('c1'),
-      phase: 'ready',
-      subagentsByParent: {},
-      jobsBySession: {},
-      currentAddress: undefined,
-    } as SessionListState)
-    const workspaces = createSnapshotStore<WorkspaceListState>({
-      items: [workspace('chat', CHAT_WORKSPACE_TITLE, [sid('c1')])],
-      archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
-      baselinesReady: true, recentWorkspaceId: undefined,
-    })
-    const controller = new ChatModeController({
-      sessions,
-      workspaces,
-      open: vi.fn(),
-      clear: vi.fn(),
-      startSession: vi.fn(),
-      applyChatPreset: failing,
-    })
-    const stop = controller.start()
-    // A rejection is swallowed: a chat with tools is worse than intended but
-    // far better than an unhandled rejection and a dead screen.
-    await expect(Promise.resolve()).resolves.toBeUndefined()
-    expect(failing).toHaveBeenCalledOnce()
-    expect(controller.store.getSnapshot().mode).toBe('chat')
-    stop()
   })
 })

@@ -13,12 +13,16 @@
  *    feature rather than a liberty taken with a user's data: a workspace this
  *    plugin manages must stay findable under the name the product shows for
  *    it, and pinned where the product puts it.
- * 2. **The `chat` agent preset exists.** Its composition ships in this
- *    package and is installed once into the harness home's writable preset
- *    root; a person's later edits there are theirs to keep.
+ * 2. **The `chat` agent preset does NOT exist.** Earlier versions installed a
+ *    tool-free composition and put every chat session on it; the mode no
+ *    longer decides a composition at all, so the preset is taken back from the
+ *    harness home's writable root — untouched copies only, a person's edits
+ *    being theirs to keep. Until it is gone it goes on being listed wherever
+ *    the harness lists presets, this deployment's terminal surface included.
  *
- * Everything else — the switch, the intent surface, which preset a chat
- * session lands on — is the browser half, and reaches the host only through
+ * Everything else — the switch, and which preset a chat session lands on
+ * (the deployment's default, and whatever the reader picks instead) — is the
+ * browser half and the harness's own chip, and reaches the host only through
  * APIs the harness already serves.
  * @module @omdsh-plugins/omdsh-chatmode
  */
@@ -28,29 +32,21 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 // The `ctx.workspaceRegistry` Context merge; the value below comes from the
 // service, never from an import of the registry implementation.
 import type {} from '@deepseek-ai/dsh-workspace'
-// Type-only: the ctx.settings Context merge and its `settings/updated` event.
-import type {} from '@deepseek-ai/dsh-settings'
-import { resolvePresetLocale, UI_LOCALE_NAMESPACE } from './preset-locale.ts'
 import {
-  CHAT_WORKSPACE_TITLE, ensureChatDirectory, ensureChatPreset, writePresetMetadata,
+  CHAT_WORKSPACE_TITLE, ensureChatDirectory, removeChatPreset,
 } from './chat-home.ts'
 
 export {
-  CHAT_DIR_PATH, CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, ensureChatDirectory, ensureChatPreset,
-  writePresetMetadata,
+  CHAT_DIR_PATH, CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE, COMPOSITION_FILE, METADATA_FILE,
+  USER_PRESET_DIR, ensureChatDirectory, removeChatPreset,
 } from './chat-home.ts'
-export { renderPresetMetadata, type PresetLocale } from './preset-copy.ts'
-export { resolvePresetLocale, UI_LOCALE_NAMESPACE } from './preset-locale.ts'
+export type { PresetRemoval } from './chat-home.ts'
 
 /** Cordis plugin name. */
 export const name = 'omdsh-chatmode'
 
-/**
- * `workspaceRegistry` is what makes the Chat directory a workspace; `settings`
- * is where the web UI's language preference lives, and the preset's picker
- * copy follows it because the harness will not localize it for us.
- */
-export const inject = ['workspaceRegistry', 'settings']
+/** `workspaceRegistry` is what makes the Chat directory a workspace. */
+export const inject = ['workspaceRegistry']
 
 /** Host-half configuration. */
 export interface Config {
@@ -66,24 +62,13 @@ export interface Config {
  * Bring up Chat mode's host side.
  * @param ctx - host context carrying the workspace registry.
  * @param config - see {@link Config}.
- * @returns completion once the workspace and the preset are both in place.
+ * @returns completion once the workspace is in place and the retired preset
+ * is gone.
  */
 export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   const home = resolveDshHome(config.home)
   const path = await ensureChatDirectory(home)
-  await ensureChatPreset(home)
-  await writePresetMetadata(home, resolvePresetLocale(ctx.settings.get(UI_LOCALE_NAMESPACE)))
-
-  // The picker reads `preset.yml` on every roster load and this plugin cannot
-  // reach into that surface, so following the language means rewriting the
-  // file when the setting commits. It takes effect on the next roster load.
-  ctx.on('settings/updated', (namespace: string, next: unknown) => {
-    if (namespace !== UI_LOCALE_NAMESPACE) return
-    void writePresetMetadata(home, resolvePresetLocale(next)).catch(() => {
-      // A preset whose copy is one language behind is worth no more than a
-      // silent skip; the composition it names is unaffected.
-    })
-  })
+  await removeChatPreset(home)
 
   // `create` is idempotent per canonical path: the first boot registers the
   // workspace (prepended into the display order), and every later one resolves

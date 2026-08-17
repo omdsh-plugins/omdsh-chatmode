@@ -11,9 +11,9 @@
 # The row is dual-face, the ordinary `dsh.client` shape:
 #
 #   - node half (`lib/index.js`, loaded here) creates `<dshHome>/chat`,
-#     registers it as the managed `Chat` workspace, and installs this
-#     package's own tool-free `chat` agent preset into the harness home's
-#     writable preset root;
+#     registers it as the managed `Chat` workspace, and takes back the
+#     tool-free `chat` agent preset earlier versions installed into the
+#     harness home's writable preset root;
 #   - browser half (`lib/client.js`) is picked up by `dsh-client-modules`,
 #     which scans every loader entry for a `dsh.client` declaration — an
 #     out-of-tree row is found exactly like an in-box one.

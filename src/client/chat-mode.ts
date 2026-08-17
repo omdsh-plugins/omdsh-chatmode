@@ -11,6 +11,12 @@
  *
  * Switching, then, is not a state write but a navigation: enter the mode's
  * most recent conversation, or start a new one where that mode keeps them.
+ *
+ * The mode decides WHERE a conversation lives and nothing else. It used to
+ * decide the agent composition too — every chat session was recomposed onto a
+ * tool-free preset — and no longer does: a chat runs the deployment's default
+ * preset like any other session, and the harness's own chip above the composer
+ * is where a reader picks a different one.
  * @module @omdsh-plugins/omdsh-chatmode/src/client/chat-mode
  */
 
@@ -27,9 +33,6 @@ import type { ChatModeState, SessionMode } from './contract.ts'
  * a product fact rather than a hidden coupling.
  */
 export const CHAT_WORKSPACE_TITLE = 'Chat'
-
-/** Preset id every chat session is put on: the tool-free composition. */
-export const CHAT_PRESET_ID = 'chat'
 
 const INITIAL: ChatModeState = { mode: 'work', ready: false }
 
@@ -51,15 +54,9 @@ export interface ChatModeDeps {
    * @param workspaceId - the workspace to start in.
    */
   startSession(workspaceId: WorkspaceId): void
-  /**
-   * Put one still-blank session on the tool-free chat composition.
-   * @param sessionId - the blank session to switch.
-   * @returns completion; a rejection leaves the session on its default preset.
-   */
-  applyChatPreset(sessionId: SessionId): Promise<void>
 }
 
-/** Derives the mode, drives the two gestures, and keeps chat sessions tool-free. */
+/** Derives the mode and drives the two gestures. */
 export class ChatModeController {
   /** The snapshot the switch renders from. */
   readonly store: SnapshotStore<ChatModeState> = createSnapshotStore(INITIAL)
@@ -69,13 +66,6 @@ export class ChatModeController {
    * returns to the conversation they left rather than a blank one.
    */
   private readonly lastSession: Partial<Record<SessionMode, SessionId>> = {}
-
-  /**
-   * Sessions this controller already asked the host to compose as chats.
-   * Remembered so a user who deliberately picks another preset for a chat
-   * session is not overruled on the next list update.
-   */
-  private readonly presetApplied = new Set<SessionId>()
 
   /** The selection the last derivation saw, so a navigation can be told from a refresh. */
   private lastCurrent: SessionId | undefined
@@ -185,19 +175,6 @@ export class ChatModeController {
     const next: ChatModeState = { mode, ready: chat !== undefined }
     const snapshot = this.store.getSnapshot()
     if (navigated || snapshot.mode !== next.mode || snapshot.ready !== next.ready) this.store.set(next)
-
-    if (mode !== 'chat' || current === undefined) return
-    const summary = sessions.byId[current]
-    // Only a session that has not run yet can be recomposed, and only once:
-    // the host refuses the swap afterwards, and a user who chose another
-    // preset for this chat keeps it.
-    if (summary === undefined || !summary.blank) return
-    if (summary.agentPreset === CHAT_PRESET_ID || this.presetApplied.has(current)) return
-    this.presetApplied.add(current)
-    void this.deps.applyChatPreset(current).catch(() => {
-      // The session stays on the deployment default — a chat with tools,
-      // which is worse than intended but far better than a dead screen.
-    })
   }
 
   /** The managed Chat workspace, when the list already carries it. */

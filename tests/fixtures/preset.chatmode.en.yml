@@ -1,0 +1,6 @@
+# Written by @omdsh-plugins/omdsh-chatmode in the language the web UI is set
+# to; the harness does not localize a user-authored preset's copy. Edit
+# this file and it becomes yours — the plugin then leaves it alone.
+name: 'Chat Mode'
+description: 'A conversation-only agent with no tools — no file access, no commands, no subagents, so nothing on your machine is touched; switch to Work mode when a task needs your repository.'
+order: 0

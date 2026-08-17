@@ -20,31 +20,27 @@
  */
 
 import type { ClientContext, ISessions, IWorkspaces } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 
-/** The three faces Chat mode reaches outside its own package. */
+/** The two faces Chat mode reaches outside its own package. */
 export interface ChatModeServices {
   /** Session selection and the live list the mode is derived from. */
   readonly sessions: ISessions
   /** The workspace list, and the New Session flow that connects one. */
   readonly workspaces: IWorkspaces
-  /** The wire handle, for the agent-preset selection RPC. */
-  readonly connection: ConnectionHandle
 }
 
 /**
  * Resolve this plugin's services from the client root context.
  *
  * Every name here is in the plugin's `inject` list, so cordis has published
- * all three before `apply` runs and a missing one is a composition error
- * rather than a case to handle.
+ * both before `apply` runs and a missing one is a composition error rather
+ * than a case to handle.
  * @param ctx - client root context.
- * @returns the three service faces (see {@link ChatModeServices}).
+ * @returns the two service faces (see {@link ChatModeServices}).
  */
 export function resolveServices(ctx: ClientContext): ChatModeServices {
   return {
     sessions: ctx.get('sessions') as unknown as ISessions,
     workspaces: ctx.get('workspaces') as unknown as IWorkspaces,
-    connection: ctx.get('connection') as unknown as ConnectionHandle,
   }
 }

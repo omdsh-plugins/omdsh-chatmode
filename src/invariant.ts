@@ -14,11 +14,11 @@ export const name = 'omdsh-chatmode-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant. The host half performs two idempotent filesystem
- * setups and one idempotent registry create, all asserted directly by this
- * package's own specs; the browser half owns one mode value and emits no
- * cordis events, so there is no cross-plugin state whose consistency an
- * invariant could watch.
+ * No runtime invariant. The host half performs one idempotent directory
+ * create, one guarded removal, and one idempotent registry create, all
+ * asserted directly by this package's own specs; the browser half owns one
+ * mode value and emits no cordis events, so there is no cross-plugin state
+ * whose consistency an invariant could watch.
  */
 const install: InvariantInstaller = () => {}
 

@@ -1,46 +1,17 @@
 // @vitest-environment jsdom
-// The browser plugin body: two registrations into published slots, two
-// segments into another package's switch, and the faces they hand.
+// The browser plugin body: two segments into another package's switch, over
+// one derived fact, and no seat of its own anywhere in the conversation view.
 import { describe, expect, it, vi } from 'vitest'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionListState, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { ModeSegmentRegistry } from '@omdsh-plugins/omdsh-base/src/client/mode-segments.ts'
 import { apply, inject, SESSION_MODES } from '../src/client/index.ts'
-import type { ChatModeNoteInjected, PresetSeatInjected } from '../src/client/contract.ts'
-import { CHAT_PRESET_ID, CHAT_WORKSPACE_TITLE } from '../src/client/chat-mode.ts'
-import { AGENT_PRESET_LOCALE_NS } from '../src/client/preset-display.ts'
+import { CHAT_WORKSPACE_TITLE } from '../src/client/chat-mode.ts'
 import { en } from '../src/client/locales.ts'
-
-/** One recorded slot registration. */
-interface Registration {
-  options: {
-    name: string
-    id?: string
-    order?: number
-    priority?: number
-    locale?: string
-    inject?: () => unknown
-  }
-  component: unknown
-}
-
-/** The slice of ui-agent-preset's English dictionary this plugin reads. */
-const AGENT_PRESET_COPY: Readonly<Record<string, string>> = {
-  presetStandardName: 'Standard mode',
-  presetStandardDescription: 'Full coding agent with file editing, shell, and more.',
-}
-
-/** The roster a deployment running this plugin actually reports. */
-const ROSTER = [
-  { id: 'standard', trust: 'system' as const, name: '标准模式', isDefault: true },
-  { id: 'minimal', trust: 'system' as const, name: '极简模式', isDefault: false },
-  { id: CHAT_PRESET_ID, trust: 'user' as const, name: 'Chat Mode', isDefault: false },
-]
 
 /** A fake client root plus the service doubles the plugin resolves by name. */
 function bench(options: {
-  select?: () => Promise<unknown>
   /** Compose without the mode system, the way a profile with no omdsh-base does. */
   modes?: false
 } = {}) {
@@ -63,44 +34,35 @@ function bench(options: {
   const open = vi.fn()
   const clear = vi.fn()
   const startSession = vi.fn()
-  const noteAgentPreset = vi.fn()
-  const select = options.select ?? vi.fn(async () => ({ result: { ok: true, value: {} } }))
-  const list = vi.fn(async () => ({
-    result: { ok: true, value: { presets: ROSTER, authorable: true, hasDocument: false } },
-  }))
   // The REAL registry, imported from the package that publishes it: a spec
   // driving this plugin through a hand-written double would keep passing after
   // the contract moved out from under it.
   const modes = new ModeSegmentRegistry()
   const services: Record<string, unknown> = {
-    sessions: { list: sessions, open, clear, noteAgentPreset },
+    sessions: { list: sessions, open, clear },
     workspaces: { list: workspaces, startSession },
-    connection: { api: { agentPresets: { select, list } } },
     ...options.modes === false ? {} : { sessionModes: modes },
   }
-  const registrations: Registration[] = []
+  const registrations: string[] = []
   const disposers: (() => void)[] = []
   const ctx = {
     effect: (factory: () => (() => void) | void) => {
       const disposer = factory()
       if (disposer !== undefined) disposers.push(disposer)
     },
-    // Real copy, so a segment's label is what a reader would see; the
-    // agent-preset namespace is another plugin's, and the locale service
-    // answers an unknown key with the key itself.
+    // Real copy, so a segment's label is what a reader would see.
     locale: {
       register: () => () => {},
-      bind: (ns: string) => (key: string) =>
-        (ns === AGENT_PRESET_LOCALE_NS ? AGENT_PRESET_COPY[key] : en[key as keyof typeof en]) ?? key,
+      bind: () => (key: string) => en[key as keyof typeof en] ?? key,
     },
     on: () => () => {},
     provide: (name: string, value: unknown) => { services[name] = value },
+    // Present and recording: the point of the assertion below is that this
+    // package asks it for nothing.
     slots: {
-      // The real inject waits for the declaration; the doubles here run the
-      // registration straight away, which is the case this spec is about.
       inject: (_name: string, register: () => void) => { register() },
-      register: (opts: Registration['options'], component: unknown) => {
-        registrations.push({ options: opts, component })
+      register: (opts: { name: string }) => {
+        registrations.push(opts.name)
         return () => {}
       },
     },
@@ -113,17 +75,7 @@ function bench(options: {
   } as unknown as ClientContext
 
   apply(ctx)
-  return {
-    ctx, modes, registrations, open, clear, startSession, noteAgentPreset, select, list,
-    sessions, workspaces, disposers,
-  }
-}
-
-/** The recorded registration for one slot. */
-function entry(b: ReturnType<typeof bench>, name: string): Registration {
-  const found = b.registrations.find(registration => registration.options.name === name)
-  if (found === undefined) throw new Error(`no registration for ${name}`)
-  return found
+  return { ctx, modes, registrations, open, clear, startSession, sessions, workspaces, disposers }
 }
 
 /**
@@ -147,74 +99,22 @@ function openSession(b: ReturnType<typeof bench>, sessionId: string): void {
 
 describe('omdsh-chatmode browser half', () => {
   it('declares the services it resolves by name', () => {
-    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection'])
+    // No `connection`: the agent-preset RPC went with the composition this
+    // mode used to impose. No `slots` either — see below.
+    expect(inject).toEqual(['sessions', 'workspaces', 'locale'])
   })
 
-  it('registers the dock note and the preset chip; the switch is not its seat', () => {
+  it('takes no seat in the conversation view', () => {
+    // It used to hold two — a dock note and a shadow of ui-agent-preset's own
+    // chip — and both belonged to a mode that decided the composition. The
+    // shipped chip is back in its seat, offering every preset the deployment
+    // supplies, which is the whole of "the mode no longer decides".
     const b = bench()
-    // `shell.overlay` is omdsh-base's, and this package reaches it the same
-    // way Code mode does — by registering a segment, not by taking a seat.
-    expect(b.registrations.map(registration => registration.options.name).sort())
-      .toEqual(['conversation.hero.agentPreset', 'conversation.input.dock'])
-    // Ahead of the todo/goal/queue rows: what the session IS precedes what it
-    // is currently doing.
-    expect(entry(b, 'conversation.input.dock').options.order).toBe(-10)
-    // The hero chip is a shadow of ui-agent-preset's own, and a single-kind
-    // cell goes to the LOWEST priority — a default-0 registration would throw
-    // as a duplicate occupant instead.
-    expect(entry(b, 'conversation.hero.agentPreset').options.priority).toBe(-1)
-  })
-
-  it('offers the roster without the chat preset while the column is in Work', async () => {
-    const b = bench()
-    const face = entry(b, 'conversation.hero.agentPreset').options.inject?.() as PresetSeatInjected
-    await face.load()
-    const state = face.hooks.presetSeat.getSnapshot()
-    expect(state.options.map(option => option.id)).toEqual(['standard', 'minimal'])
-    expect(state.fixed).toBe(false)
-    // The deployment default is what the next session gets.
-    expect(state.current).toBe('standard')
-  })
-
-  it('states the chat preset, and only it, once the column is in Chat', async () => {
-    const b = bench()
-    const face = entry(b, 'conversation.hero.agentPreset').options.inject?.() as PresetSeatInjected
-    await face.load()
-    b.sessions.set({
-      ...b.sessions.getSnapshot(),
-      ids: ['c1' as never],
-      byId: { ['c1' as never]: { id: 'c1' as never, displayTitle: 'c1', running: false, blank: true, updatedAt: 1 } },
-      current: 'c1' as never,
-    })
-    b.workspaces.set({
-      ...b.workspaces.getSnapshot(),
-      items: [{ ...b.workspaces.getSnapshot().items[0]!, sessionIds: ['c1' as never] }],
-    })
-    const state = face.hooks.presetSeat.getSnapshot()
-    expect(state.options.map(option => option.id)).toEqual([CHAT_PRESET_ID])
-    // Nothing to choose between: the mode already decided the composition.
-    expect(state.fixed).toBe(true)
-    expect(state.current).toBe(CHAT_PRESET_ID)
-  })
-
-  it('names a shipped preset out of the dictionary the harness localizes it in', () => {
-    const b = bench()
-    const face = entry(b, 'conversation.hero.agentPreset').options.inject?.() as PresetSeatInjected
-    // The file on disk says 标准模式; an English reader must not be shown it.
-    expect(face.describe({ id: 'standard', trust: 'system', name: '标准模式' })).toEqual({
-      name: 'Standard mode',
-      description: AGENT_PRESET_COPY.presetStandardDescription,
-    })
-    // A locally authored preset is never translated: its file is its copy.
-    expect(face.describe({ id: CHAT_PRESET_ID, trust: 'user', name: 'Chat Mode' }).name).toBe('Chat Mode')
+    expect(b.registrations).toEqual([])
   })
 
   it('registers its own two segments and reports the derived mode through them', () => {
     const b = bench()
-    const dock = entry(b, 'conversation.input.dock').options.inject?.() as ChatModeNoteInjected
-    // The dock note still reads the raw derived state; the switch reads the
-    // registry, which is the door every posture arrives through.
-    expect(dock.hooks.chatMode.getSnapshot()).toEqual({ mode: 'work', ready: true })
     expect(b.modes.store.getSnapshot().map(segment => ({
       id: segment.id, label: segment.label, active: segment.active, available: segment.available,
     }))).toEqual([
@@ -281,15 +181,13 @@ describe('omdsh-chatmode browser half', () => {
     expect(modes.store.getSnapshot().find(segment => segment.id === 'code')?.active).toBe(true)
   })
 
-  it('leaves both segments behind when no mode system is composed', () => {
-    // The off state, and the reason the segments ride a restricted fiber: the
-    // surfaces that read the derived mode keep working, and the two pills are
-    // simply not there.
+  it('mounts without a mode system, and contributes nothing at all', () => {
+    // The off state, and the reason the segments ride a restricted fiber: a
+    // profile with no omdsh-base gets two missing pills rather than a dead
+    // page.
     const b = bench({ modes: false })
-    expect(b.registrations.map(registration => registration.options.name).sort())
-      .toEqual(['conversation.hero.agentPreset', 'conversation.input.dock'])
-    const dock = entry(b, 'conversation.input.dock').options.inject?.() as ChatModeNoteInjected
-    expect(dock.hooks.chatMode.getSnapshot()).toEqual({ mode: 'work', ready: true })
+    expect(b.registrations).toEqual([])
+    expect(b.modes.store.getSnapshot()).toEqual([])
   })
 
   it('names the registry by the wire word omdsh-base publishes it under', () => {
@@ -337,44 +235,6 @@ describe('omdsh-chatmode browser half', () => {
     expect(b.open).toHaveBeenCalledWith('code-session-1')
     expect(modes.store.getSnapshot().find(segment => segment.id === 'code')?.active).toBe(false)
     expect(modes.store.getSnapshot().find(segment => segment.id === 'work')?.active).toBe(true)
-  })
-
-  it('composes a blank chat session through the agent-preset RPC', async () => {
-    const b = bench()
-    b.sessions.set({
-      ...b.sessions.getSnapshot(),
-      ids: ['c1' as never],
-      byId: { ['c1' as never]: { id: 'c1' as never, displayTitle: 'c1', running: false, blank: true, updatedAt: 1 } },
-      current: 'c1' as never,
-    })
-    b.workspaces.set({
-      ...b.workspaces.getSnapshot(),
-      items: [{ ...b.workspaces.getSnapshot().items[0]!, sessionIds: ['c1' as never] }],
-    })
-    await vi.waitFor(() => { expect(b.select).toHaveBeenCalled() })
-    expect(b.select).toHaveBeenCalledWith({ sessionId: 'c1', agentPreset: CHAT_PRESET_ID })
-    await vi.waitFor(() => { expect(b.noteAgentPreset).toHaveBeenCalledWith('c1', CHAT_PRESET_ID) })
-  })
-
-  it('leaves the session alone when the host refuses the composition', async () => {
-    const refuse = vi.fn(async () => ({
-      result: { ok: false, error: { message: 'unknown preset "chat"' } },
-    }))
-    const b = bench({ select: refuse })
-    b.sessions.set({
-      ...b.sessions.getSnapshot(),
-      ids: ['c1' as never],
-      byId: { ['c1' as never]: { id: 'c1' as never, displayTitle: 'c1', running: false, blank: true, updatedAt: 1 } },
-      current: 'c1' as never,
-    })
-    b.workspaces.set({
-      ...b.workspaces.getSnapshot(),
-      items: [{ ...b.workspaces.getSnapshot().items[0]!, sessionIds: ['c1' as never] }],
-    })
-    await vi.waitFor(() => { expect(refuse).toHaveBeenCalled() })
-    // A rejected swap must not be recorded as one, and must not throw past
-    // the controller: the session simply keeps the deployment default.
-    expect(b.noteAgentPreset).not.toHaveBeenCalled()
   })
 
   it('stops deriving when the plugin fiber goes away', () => {

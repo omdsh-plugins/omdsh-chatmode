@@ -1,0 +1,6 @@
+# Written by @omdsh-plugins/omdsh-justchat in the language the web UI is set
+# to; the harness does not localize a user-authored preset's copy. Edit
+# this file and it becomes yours — the plugin then leaves it alone.
+name: '纯聊天模式'
+description: '纯对话 Agent，不挂任何工具：不读写文件、不执行命令、不派生子代理，因此不会碰到你机器上的任何东西；需要动仓库时切到 Work 模式。'
+order: 0

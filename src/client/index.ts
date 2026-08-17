@@ -1,36 +1,28 @@
 /**
- * Chat mode, browser half. Two entries into slots the harness already
- * declares, two segments into a switch this package does not own, over one
- * derived fact:
+ * Chat mode, browser half. Two segments into a switch this package does not
+ * own, over one derived fact: a session is a chat exactly when it lives in the
+ * managed Chat workspace.
  *
- * - `conversation.input.dock` (ui-conversation) — the one line saying what a
- *   chat session will and will not do, above the composer while it is blank.
- * - `conversation.hero.agentPreset` (ui-conversation) — the preset chip on the
- *   new-session screen, offering what the current mode can use. This one is a
- *   SHADOW: `ui-agent-preset` fills the same single-kind seat, and registering
- *   at a lower priority is the slot system's own way to take a cell (lowest
- *   renders). See preset-seat.ts for why the mode has to own that chip.
  * - `sessionModes` (`@omdsh-plugins/omdsh-base`) — the Chat and Work segments,
  *   registered into the switch that package renders. Two postures among
  *   however many the profile composed, reaching the control the same way Code
  *   mode does.
  *
- * Nothing here is a harness change: both slots are published seats, every
- * registration goes through `slots.inject()` (which waits for the declaration,
- * withdraws with it, and re-registers if it returns), and removing this
- * plugin's row removes all of it — the shadowed chip included, which comes
- * straight back.
+ * That is the whole surface. It used to be more: a dock note stating that a
+ * chat session had no tools, and a preset chip shadowing the harness's own so
+ * the mode could decide the composition. Both went with the composition
+ * itself — a chat now runs the deployment's default preset, the shipped chip
+ * offers every preset the deployment supplies, and the mode is once again only
+ * a statement about where the conversation lives.
  *
- * The two halves of that list have different fates without the mode system.
- * The slot surfaces stand alone: the derived mode is read from where the
- * current conversation lives, so the note and the chip stay correct with no
- * switch on screen. The segments cannot — so they, and only they, ride a
- * restricted fiber waiting on `sessionModes`.
+ * Nothing here is a harness change, and nothing here is required: the segments
+ * ride a restricted fiber waiting on `sessionModes`, so a profile composed
+ * without `@omdsh-plugins/omdsh-base` loses two pills rather than a page.
  * @module @omdsh-plugins/omdsh-chatmode/client
  */
 
 import { createElement } from 'react'
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { IconFolderOpenOutline16, IconNewChatOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -38,23 +30,14 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // nothing of omdsh-base reaches this bundle. A value import would be a
 // client-bundle purity error.
 import type { SessionModes } from '@omdsh-plugins/omdsh-base/client'
-import type { ChatModeNoteInjected, PresetSeatInjected } from './contract.ts'
-import { CHAT_PRESET_ID, ChatModeController } from './chat-mode.ts'
-import { ChatModeNote } from './ChatModeNote.tsx'
-import { PresetSeat } from './PresetSeat.tsx'
-import { PresetSeatController } from './preset-seat.ts'
+import { ChatModeController } from './chat-mode.ts'
 import { ChatPinController } from './pin.ts'
-import { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
 import { resolveServices } from './services.ts'
 import { MODE_COMMANDS, SHORTCUT_SERVICE, withChord, type IShortcutClient } from './shortcut.ts'
 import { en, zh, type ChatModeKey } from './locales.ts'
 
 export type { ChatModeState, SessionMode } from './contract.ts'
 export type { ChatModeKey } from './locales.ts'
-export { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
-export type { PresetDisplayText, PresetOption } from './preset-display.ts'
-export { PresetSeatController } from './preset-seat.ts'
-export type { PresetSeatDeps, PresetSeatState, RosterPreset } from './preset-seat.ts'
 export { ChatPinController, pinMove } from './pin.ts'
 export type { ChatPinDeps, PinMove } from './pin.ts'
 
@@ -71,7 +54,7 @@ export const SESSION_MODES = 'sessionModes'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** The mode switch and the chat-mode note's copy. */
+    /** The two segments' copy. */
     chatmode: ChatModeKey
   }
 }
@@ -107,7 +90,7 @@ const ICONS = {
 }
 
 /** Required services (cordis fiber inject). */
-export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection']
+export const inject = ['sessions', 'workspaces', 'locale']
 
 /**
  * Mount the Chat-mode surfaces.
@@ -116,7 +99,7 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'omdsh-chatmode: dictionaries')
 
-  const { sessions, workspaces, connection } = resolveServices(ctx)
+  const { sessions, workspaces } = resolveServices(ctx)
 
   const controller = new ChatModeController({
     sessions: sessions.list,
@@ -124,14 +107,6 @@ export function apply(ctx: ClientContext): void {
     open: (id) => { sessions.open(id) },
     clear: () => { sessions.clear() },
     startSession: (workspaceId) => { workspaces.startSession(workspaceId) },
-    applyChatPreset: async (sessionId: SessionId) => {
-      const response = await connection.api.agentPresets.select({
-        sessionId,
-        agentPreset: CHAT_PRESET_ID,
-      })
-      if (!response.result.ok) throw new Error(response.result.error.message)
-      sessions.noteAgentPreset(sessionId, CHAT_PRESET_ID)
-    },
   })
 
   ctx.effect(() => controller.start(), 'omdsh-chatmode: derived session mode')
@@ -148,71 +123,24 @@ export function apply(ctx: ClientContext): void {
   })
   ctx.effect(() => pin.start(), 'omdsh-chatmode: the Chat workspace stays on top')
 
-  // This package's two postures. A RESTRICTED fiber, and the only part of this
-  // plugin that is one: a profile composed without `@omdsh-plugins/omdsh-base`
-  // has no switch for a segment to appear in, while the surfaces below keep
-  // working from the derived mode alone. Off is two missing pills, not a dead
-  // page — see rule 9 of the conventions for why this is not an `inject`.
+  // This package's two postures, on a RESTRICTED fiber: a profile composed
+  // without `@omdsh-plugins/omdsh-base` has no switch for a segment to appear
+  // in, while the derived mode above goes on being derived for whoever reads
+  // it. Off is two missing pills, not a dead page — see rule 9 of the
+  // conventions for why this is not an `inject`.
   ctx.inject([SESSION_MODES], (mctx: ClientContext) => {
     const modes = mctx.get(SESSION_MODES) as unknown as SessionModes | undefined
     // Reachable when the name is provided by a fiber that is not active.
     if (modes === undefined) return
     mountSegments(mctx, modes, controller, sessions)
   })
-
-  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock',
-    id: 'chatmode-note',
-    // Ahead of the todo/goal/queue rows: what the session IS precedes what it
-    // is currently doing, and in chat mode those rows never appear anyway.
-    order: -10,
-    locale: NS,
-    inject: (): ChatModeNoteInjected => ({ hooks: { chatMode: controller.store } }),
-  }, ChatModeNote))
-
-  const seat = new PresetSeatController({
-    sessions: sessions.list,
-    mode: controller.store,
-    roster: async () => {
-      const response = await connection.api.agentPresets.list({})
-      if (!response.result.ok) throw new Error(response.result.error.message)
-      return response.result.value.presets
-    },
-    select: async (sessionId, preset) => {
-      const response = await connection.api.agentPresets.select({ sessionId, agentPreset: preset })
-      if (!response.result.ok) throw new Error(response.result.error.message)
-      return response.result.value.agentPreset
-    },
-    noteApplied: (sessionId, preset) => { sessions.noteAgentPreset(sessionId, preset) },
-  })
-  ctx.effect(() => seat.start(), 'omdsh-chatmode: mode-filtered preset roster')
-
-  // Another plugin's dictionary, read at call time rather than copied: the
-  // harness ships its four presets with Chinese metadata on disk and localizes
-  // them here, so a chip that skipped this would hand an English reader 标准模式.
-  const tPreset = ctx.locale.bind(AGENT_PRESET_LOCALE_NS)
-
-  ctx.slots.inject('conversation.hero.agentPreset', () => ctx.slots.register({
-    name: 'conversation.hero.agentPreset',
-    // Shadows ui-agent-preset's chip in the same single cell (lowest priority
-    // renders). Nothing is unregistered: withdrawing this row hands the seat
-    // straight back.
-    priority: -1,
-    locale: NS,
-    inject: (): PresetSeatInjected => ({
-      hooks: { presetSeat: seat.store },
-      load: () => seat.load(),
-      select: (id: string) => seat.select(id),
-      describe: option => presetDisplayText(option, tPreset),
-    }),
-  }, PresetSeat))
 }
 
 /**
  * Register Chat and Work into the switch, and keep them reporting.
  * @param ctx - the restricted context the registry resolved in. Every effect
  * below rides it, so a mode system that unloads at runtime takes both segments
- * with it and leaves the surfaces above standing.
+ * with it and leaves the derived mode standing.
  * @param modes - the resolved segment registry.
  * @param controller - the derived-mode controller both segments report from.
  * @param sessions - the session service, for the conversation a press lands on.
