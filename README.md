@@ -14,6 +14,7 @@ The harness is a coding agent, and its New Session screen asks for a workspace b
 | A line stating what a chat session will not do, above the composer | An entry in `conversation.input.dock` |
 | A preset chip on the new-session screen offering what the mode can use | An entry in `conversation.hero.agentPreset`, shadowing the shipped chip |
 | The **Chat** workspace group in the sidebar | A real directory (`<dshHome>/sessions/chat`) this plugin registers and keeps titled `Chat` — the sidebar renders it like any other workspace |
+| That group staying the **first** one, however many projects you open | The host half puts it first at boot; the browser half holds it there — see [Chat stays on top](#chat-stays-on-top) |
 | The **Chat Mode** agent preset | `agent-presets/chat/`, installed once into `<dshHome>/.agent-presets/` |
 | The green and blue dots on those conversations in the sidebar | The `tone` and `owns` these two segments carry; the dots themselves are painted by [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) for whatever modes are registered |
 
@@ -96,6 +97,21 @@ The chip is the only part of that screen this package owns. The blank-chat hero 
 That is what makes running in a directory the user never chose safe: there is nothing in the session that can reach it.
 
 That persona is the complete system prompt: no tool guidance, no runtime context snapshot, and an explicit instruction to say so rather than pretend when a request needs a repository. Nothing else this package ships reaches a model request — it assembles no provider request of its own, and the preset it installs shortens one, because an agent with no tools sends no tool catalog.
+
+## Chat stays on top
+
+The **Chat** group is the first one in the sidebar, and stays first for as long as the plugin is installed. It is the group with no project behind it — the one a person reaches for when the question is not about a repository — so having it drift down the list as projects accumulate would put the least specific thing behind the most specific ones.
+
+It takes both halves, because the fact is undone in two different ways.
+
+The host half asserts it at boot: `workspaceRegistry.create` is idempotent per directory, so the pin is a separate `insertBefore` beside the title re-assertion. That is what the first render is owed, before any browser has attached.
+
+Opening a project is the other way, and it happens **after** boot: `create` PREPENDS a new workspace, so each directory added pushes Chat down one place while the app is running. The registry publishes no event to hook, so the browser half reconciles instead — it is already told about every workspace the sidebar draws, because it draws them from that list, and the sidebar's group order *is* the registry order. When Chat is not the first row it asks the host to move it back, through the same `insertBefore` the drag-to-reorder gesture calls. The correction is therefore durable and shared: it is written to the registry, not painted over one tab. See [pin.ts](src/client/pin.ts).
+
+Two things follow from that, and both are deliberate:
+
+- **It outranks a drag.** Dragging the Chat group down the sidebar puts it back. That is the same trade the title makes — the host half re-asserts `Chat` over a rename — and for the same reason: both are facts this plugin manages, not the user's arrangement of their own projects.
+- **[omdsh-sidechat](https://github.com/omdsh-plugins/omdsh-sidechat) is pinned by the same act.** A standalone side conversation is accounted under this same managed workspace (it finds it by the title, as everything here does), so its conversations sit in the group this keeps on top. That package needs to know nothing about any of it.
 
 ## Install
 
@@ -199,7 +215,8 @@ The browser half is bundled as a loader artifact (`lib/client.js`) exactly as th
 - **The blank-chat screen is the shipped one.** It still shows the workspace chip (reading `Chat`) and the shipped headline and composer placeholder ("Describe what you want to build"), which is written for work. The harness publishes no seam for either, and this package deliberately does not reach into another plugin's DOM to fake one.
 - **The switch is centred by measurement.** It rides the frame-wide overlay layer and finds the conversation column through the published `data-conversation-scroll` attribute; a deployment whose centre column is some other plugin's gets a frame-centred switch instead. A switch that has not been measured yet is also one that never parks: with no zone to be revealed from, taking it away would be taking it for good.
 - **A pointer already sitting in the reveal zone is not seen until it moves.** The zone is tested on pointer movement, and a pointer that has not moved since the page loaded has reported nothing — so the switch parks on schedule, and the first small move brings it straight back. Polling the cursor position is the only alternative, and it costs more than the case is worth.
-- **The Chat workspace is found by its title.** The host half re-asserts `Chat` on every boot, so renaming it in the sidebar does not survive a restart. That title is the group heading the product shows, which is what makes matching on it a product fact rather than a hidden coupling — but a second workspace a user titles `Chat` would shadow it.
+- **The Chat workspace is found by its title.** The host half re-asserts `Chat` on every boot, so renaming it in the sidebar does not survive a restart. That title is the group heading the product shows, which is what makes matching on it a product fact rather than a hidden coupling — but a second workspace a user titles `Chat` would shadow it, and [the pin](#chat-stays-on-top) then reads that one and considers the order already right.
+- **The pin corrects rather than prevents.** A workspace created while the app is open is prepended by the host, and Chat returns above it on the frame that reports it — so there is a moment, too short to sample in practice, where the new project is the first group. Preventing it would mean the host refusing the order it just wrote, and the registry offers no seam to hook a creation on.
 - **A refused preset swap is silent.** If the `chat` preset is missing (its directory was deleted from `<dshHome>/.agent-presets/`), the session runs on the deployment default — a chat with tools — and only a console diagnostic says so.
 - **The preset's picker copy follows the UI language on a delay.** The harness will not localize it: `ui-agent-preset` resolves a locale key only for shipped presets whose id is in its built-in table (`presetDisplayText`, gated on `trust === 'system'`), explicitly "without making user-authored metadata translatable", and a preset in the writable root carries `trust: user`. So the host half writes `preset.yml` in ONE language — the web UI's, read from the `locale` settings namespace and rewritten on `settings/updated` — and every surface naming it shows the new text on its **next page load** rather than immediately: a roster is read on mount, and the rewrite lands on the host after the browser has already applied the language, so re-reading on `locale/change` would be a race rather than a fix. With no explicit UI preference the host falls back to its own `$LANG`. A `preset.yml` a person edited is never rewritten.
 - **`Chat Mode` is still listed in Settings.** The mode filters the *chip*; the agent-preset settings section is another plugin's surface and lists every preset the deployment supplies, this one included. That is arguably right — it is where a preset is inspected, copied, and deleted — but it does mean the name appears outside the Chat workspace in one place.

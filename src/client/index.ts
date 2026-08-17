@@ -43,6 +43,7 @@ import { CHAT_PRESET_ID, ChatModeController } from './chat-mode.ts'
 import { ChatModeNote } from './ChatModeNote.tsx'
 import { PresetSeat } from './PresetSeat.tsx'
 import { PresetSeatController } from './preset-seat.ts'
+import { ChatPinController } from './pin.ts'
 import { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
 import { resolveServices } from './services.ts'
 import { MODE_COMMANDS, SHORTCUT_SERVICE, withChord, type IShortcutClient } from './shortcut.ts'
@@ -54,6 +55,8 @@ export { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
 export type { PresetDisplayText, PresetOption } from './preset-display.ts'
 export { PresetSeatController } from './preset-seat.ts'
 export type { PresetSeatDeps, PresetSeatState, RosterPreset } from './preset-seat.ts'
+export { ChatPinController, pinMove } from './pin.ts'
+export type { ChatPinDeps, PinMove } from './pin.ts'
 
 /**
  * Service name the segment registry is published under, by
@@ -132,6 +135,18 @@ export function apply(ctx: ClientContext): void {
   })
 
   ctx.effect(() => controller.start(), 'omdsh-chatmode: derived session mode')
+
+  // The host half puts the Chat workspace first at boot; this holds it there
+  // afterwards, because opening a project prepends a workspace and would push
+  // it down. Every conversation this plugin and `omdsh-sidechat` start is
+  // accounted under that one group, so this is the whole of pinning both.
+  const pin = new ChatPinController({
+    workspaces: workspaces.list,
+    move: async (workspaceId, beforeWorkspaceId) => {
+      await workspaces.insertBefore(workspaceId, beforeWorkspaceId)
+    },
+  })
+  ctx.effect(() => pin.start(), 'omdsh-chatmode: the Chat workspace stays on top')
 
   // This package's two postures. A RESTRICTED fiber, and the only part of this
   // plugin that is one: a profile composed without `@omdsh-plugins/omdsh-base`

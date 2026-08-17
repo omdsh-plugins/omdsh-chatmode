@@ -93,9 +93,15 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
 
   // Pin the Chat workspace above every other workspace. `create` prepends any
   // NEW workspace, so every project directory opened after the first boot
-  // pushes Chat down the list; re-asserting first place here is what keeps it
-  // pinned, and it matches the title re-assertion above — both are facts this
-  // plugin manages rather than the user's arrangement of its own workspaces.
+  // pushes Chat down the list; re-asserting first place here is what the very
+  // first render is owed, and it matches the title re-assertion above — both
+  // are facts this plugin manages rather than the user's arrangement of its own
+  // workspaces.
+  //
+  // It is HALF the pin, and deliberately so: a directory opened while the app
+  // is running prepends a workspace after this has run, and the registry
+  // publishes no event to hear it on. The browser half holds the order from
+  // there (`src/client/pin.ts`), off the workspace list it is already given.
   const [first] = ctx.workspaceRegistry.list()
   if (first !== undefined && first.id !== workspace.id) {
     await ctx.workspaceRegistry.insertBefore(workspace.id, first.id)
