@@ -1,4 +1,4 @@
-/** `justchat` namespace dictionaries. */
+/** `chatmode` namespace dictionaries. */
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
@@ -13,8 +13,8 @@ export const zh = {
   'seat.noDescription': '暂无描述。',
 } satisfies Record<string, string>
 
-/** The justchat namespace key union. */
-export type JustChatKey = keyof typeof zh
+/** The chatmode namespace key union. */
+export type ChatModeKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
@@ -27,4 +27,4 @@ export const en = {
   'seat.hint': 'Agent preset for the session you are about to start',
   'seat.fixed': 'The agent preset for this session, set by the current mode',
   'seat.noDescription': 'No description.',
-} satisfies Record<JustChatKey, string>
+} satisfies Record<ChatModeKey, string>

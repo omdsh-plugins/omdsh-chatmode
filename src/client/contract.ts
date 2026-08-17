@@ -10,7 +10,7 @@
  * The switch itself is not here and not this package's: it rides
  * `shell.overlay` for `@omdsh-plugins/omdsh-base`, which renders whatever
  * postures are registered. Chat and Work are two of them.
- * @module @omdsh-plugins/omdsh-justchat/src/client/contract
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/contract
  */
 
 import type {
@@ -56,7 +56,7 @@ export interface ChatModeNoteInjected {
 export type ChatModeNoteProps =
   PropsRuntime<'conversation.input.dock'>
   & InjectFace<ChatModeNoteInjected>
-  & PropsLocale<'justchat'>
+  & PropsLocale<'chatmode'>
 
 /**
  * Injected face of the preset chip: what this mode offers, how to pick, and
@@ -92,4 +92,4 @@ export interface PresetSeatInjected {
 export type PresetSeatProps =
   PropsRuntime<'conversation.hero.agentPreset'>
   & InjectFace<PresetSeatInjected>
-  & PropsLocale<'justchat'>
+  & PropsLocale<'chatmode'>

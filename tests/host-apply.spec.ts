@@ -15,7 +15,7 @@ afterEach(async () => {
 
 /** A scratch harness home plus a workspace-registry double over it. */
 async function bench(title = CHAT_WORKSPACE_TITLE, order: readonly string[] = ['w1']) {
-  const home = await mkdtemp(join(tmpdir(), 'omdsh-justchat-host-'))
+  const home = await mkdtemp(join(tmpdir(), 'omdsh-chatmode-host-'))
   homes.push(home)
   const setTitle = vi.fn(async () => {})
   const create = vi.fn(async (path: string) => ({ id: 'w1', path, title, setTitle }))
@@ -37,7 +37,7 @@ async function bench(title = CHAT_WORKSPACE_TITLE, order: readonly string[] = ['
   return { home, ctx, create, setTitle, list, insertBefore, listeners }
 }
 
-describe('omdsh-justchat host half', () => {
+describe('omdsh-chatmode host half', () => {
   it('creates the chat directory, registers it, and installs the preset', async () => {
     const b = await bench()
     await apply(b.ctx, { home: b.home })

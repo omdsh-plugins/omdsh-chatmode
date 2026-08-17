@@ -20,7 +20,7 @@ import type { UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
 /** This bundle's id: the package name, and the module-table key the shell fetches it under. */
-const ID = '@omdsh-plugins/omdsh-justchat'
+const ID = '@omdsh-plugins/omdsh-chatmode'
 
 /**
  * The specifiers the shell seeds into the frozen module table. Mirrors

@@ -13,7 +13,7 @@
  * cross-plugin value import is a client-bundle purity error. The command ids
  * are literals for the same reason — an id is a wire name shared with a
  * document, not a symbol shared with a package.
- * @module @omdsh-plugins/omdsh-justchat/src/client/shortcut
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/shortcut
  */
 
 /** Service name the switchboard is published under in the browser. */

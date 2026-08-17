@@ -13,7 +13,7 @@
  * service answers an unknown key with the key itself, which is the signal that
  * `ui-agent-preset` is not composed and the file's own metadata is the better
  * answer.
- * @module @omdsh-plugins/omdsh-justchat/src/client/preset-display
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/preset-display
  */
 
 /**

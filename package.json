@@ -1,12 +1,12 @@
 {
-  "name": "@omdsh-plugins/omdsh-justchat",
+  "name": "@omdsh-plugins/omdsh-chatmode",
   "description": "Chat mode for the DeepSeek Harness web GUI: a Chat/Work switch above the conversation, a workspace-free session-intent surface, and the managed Chat workspace its conversations are kept in",
   "version": "0.1.2",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/omdsh-plugins/omdsh-justchat.git"
+    "url": "git+https://github.com/omdsh-plugins/omdsh-chatmode.git"
   },
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -52,7 +52,7 @@
         "zh": "不用选项目目录就能开始对话，这些对话统一放在侧栏的 Chat 下面。"
       },
       "category": "workspace",
-      "docs": "https://github.com/omdsh-plugins/omdsh-justchat#readme",
+      "docs": "https://github.com/omdsh-plugins/omdsh-chatmode#readme",
       "order": 40
     }
   },

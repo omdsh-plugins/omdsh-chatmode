@@ -14,7 +14,7 @@ const homes: string[] = []
 
 /** A scratch harness home. */
 async function scratchHome(): Promise<string> {
-  const home = await mkdtemp(join(tmpdir(), 'omdsh-justchat-'))
+  const home = await mkdtemp(join(tmpdir(), 'omdsh-chatmode-'))
   homes.push(home)
   return home
 }

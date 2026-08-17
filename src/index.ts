@@ -20,7 +20,7 @@
  * Everything else — the switch, the intent surface, which preset a chat
  * session lands on — is the browser half, and reaches the host only through
  * APIs the harness already serves.
- * @module @omdsh-plugins/omdsh-justchat
+ * @module @omdsh-plugins/omdsh-chatmode
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -43,7 +43,7 @@ export { renderPresetMetadata, type PresetLocale } from './preset-copy.ts'
 export { resolvePresetLocale, UI_LOCALE_NAMESPACE } from './preset-locale.ts'
 
 /** Cordis plugin name. */
-export const name = 'omdsh-justchat'
+export const name = 'omdsh-chatmode'
 
 /**
  * `workspaceRegistry` is what makes the Chat directory a workspace; `settings`

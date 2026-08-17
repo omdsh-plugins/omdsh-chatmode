@@ -1,4 +1,4 @@
-# omdsh-justchat
+# omdsh-chatmode
 
 [English](README.md) | 中文
 
@@ -82,7 +82,7 @@ Chat 与 Work 依然是从"当前会话住在哪"推导出来的，所以从侧�
 
 它还会在当前会话变化时重新推导所显示的内容，所以在工作区之间切换时，读到的是**这个**会话的组装，而不是你刚离开的那个。
 
-接管用的是插槽系统自己的规则，不是绕开它。`conversation.hero.agentPreset` 是 `single` 格，而 single 格归 **priority 最低**的那个，所以本包注册在 `priority: -1`，压过 `ui-agent-preset` 默认的 `0`。全程没有注销任何东西：撤掉本插件这一行，座位原样还给出厂的 chip。（[hero-seat-shadow.client.spec.ts](https://github.com/omdsh-plugins/omdsh-justchat/blob/HEAD/tests/hero-seat-shadow.client.spec.ts) 直接拿真实注册表跑了这套规则，包括同优先级注册会抛的那个冲突。）
+接管用的是插槽系统自己的规则，不是绕开它。`conversation.hero.agentPreset` 是 `single` 格，而 single 格归 **priority 最低**的那个，所以本包注册在 `priority: -1`，压过 `ui-agent-preset` 默认的 `0`。全程没有注销任何东西：撤掉本插件这一行，座位原样还给出厂的 chip。（[hero-seat-shadow.client.spec.ts](https://github.com/omdsh-plugins/omdsh-chatmode/blob/HEAD/tests/hero-seat-shadow.client.spec.ts) 直接拿真实注册表跑了这套规则，包括同优先级注册会抛的那个冲突。）
 
 预设的**名字**仍然由 harness 说了算。它出厂的四个预设在磁盘上写的是中文，再在浏览器侧按 `ui-agent-preset` 注册的 `settings.agentPreset` 词典本地化 —— 所以这枚 chip 是在调用时去读那本词典，而不是抄一份。用户自己写的预设永远不翻译：文件里写的就是它的文案。词典不在场时（组装里没有 `ui-agent-preset`），查询会把 key 原样回显，chip 于是回落到文件里的元数据，而不是把一个 locale key 显示给人看。
 
@@ -99,7 +99,7 @@ Chat 与 Work 依然是从"当前会话住在哪"推导出来的，所以从侧�
 ## 安装
 
 ```sh
-dsh plugin --profile web add @omdsh-plugins/omdsh-justchat
+dsh plugin --profile web add @omdsh-plugins/omdsh-chatmode
 dsh plugin --profile web add @omdsh-plugins/omdsh-base       # 它的分段要出现在那个开关里
 ```
 
@@ -110,8 +110,8 @@ dsh plugin --profile web add @omdsh-plugins/omdsh-base       # 它的分段要�
 **无论哪种装法，`dsh web` 启动前 `lib/` 必须存在。** loader 直接 import `lib/index.js`，缺了不是界面降级，而是整棵插件树加载失败：
 
 ```
-dsh: plugin tree failed to load: ... failed to import loader entry justchat
-(@omdsh-plugins/omdsh-justchat): Cannot find module '.../lib/index.js'
+dsh: plugin tree failed to load: ... failed to import loader entry chatmode
+(@omdsh-plugins/omdsh-chatmode): Cannot find module '.../lib/index.js'
 ```
 
 ### 本地路径 / `link:` 安装
@@ -133,14 +133,14 @@ dsh web
 git 依赖靠 `prepare` 自建，本包支持这条路：提交状态下 `@deepseek-ai/*` devDependencies 指向已发布的 harness 版本，裸克隆可以自己安装并编译。
 
 ```sh
-dsh plugin --profile web add github:omdsh-plugins/omdsh-justchat#<commit>
+dsh plugin --profile web add github:omdsh-plugins/omdsh-chatmode#<commit>
 ```
 
 第一次会**失败**：pnpm ≥10 默认拒绝跑 git 依赖的 `prepare`，要先按包名放行。写进该 profile 自己的 `pnpm-workspace.yaml`（即 `$DSH_HOME/profiles/web/pnpm-workspace.yaml`，`dsh` 初始化时写的是 `packages: - .`、`nodeLinker: hoisted`、`autoInstallPeers: false`）：
 
 ```yaml
 allowBuilds:
-  '@omdsh-plugins/omdsh-justchat': true
+  '@omdsh-plugins/omdsh-chatmode': true
 ```
 
 然后重跑 `add`，再 `dsh web`。这一条等于授权该包在你机器上执行安装期代码——这里是 `tsc` 和 `tsdown`——所以建议锁到具体 commit 而不是跟分支，换 pin 之前先看 diff。
@@ -148,7 +148,7 @@ allowBuilds:
 卸载同理：
 
 ```sh
-dsh plugin --profile web remove @omdsh-plugins/omdsh-justchat
+dsh plugin --profile web remove @omdsh-plugins/omdsh-chatmode
 ```
 
 聊天目录、会话日志和预设都会留在磁盘上——卸插件不等于要删对话。

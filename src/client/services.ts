@@ -16,14 +16,14 @@
  * So the plugin states the faces it uses and resolves them by name, the way
  * `connection` is already resolved everywhere in the harness's own client
  * packages. Every use downstream is fully typed against the real contract.
- * @module @omdsh-plugins/omdsh-justchat/src/client/services
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/services
  */
 
 import type { ClientContext, ISessions, IWorkspaces } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 
 /** The three faces Chat mode reaches outside its own package. */
-export interface JustChatServices {
+export interface ChatModeServices {
   /** Session selection and the live list the mode is derived from. */
   readonly sessions: ISessions
   /** The workspace list, and the New Session flow that connects one. */
@@ -39,9 +39,9 @@ export interface JustChatServices {
  * all three before `apply` runs and a missing one is a composition error
  * rather than a case to handle.
  * @param ctx - client root context.
- * @returns the three service faces (see {@link JustChatServices}).
+ * @returns the three service faces (see {@link ChatModeServices}).
  */
-export function resolveServices(ctx: ClientContext): JustChatServices {
+export function resolveServices(ctx: ClientContext): ChatModeServices {
   return {
     sessions: ctx.get('sessions') as unknown as ISessions,
     workspaces: ctx.get('workspaces') as unknown as IWorkspaces,

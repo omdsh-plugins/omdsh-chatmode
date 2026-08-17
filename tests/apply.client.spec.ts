@@ -145,7 +145,7 @@ function openSession(b: ReturnType<typeof bench>, sessionId: string): void {
   } as SessionListState)
 }
 
-describe('omdsh-justchat browser half', () => {
+describe('omdsh-chatmode browser half', () => {
   it('declares the services it resolves by name', () => {
     expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection'])
   })

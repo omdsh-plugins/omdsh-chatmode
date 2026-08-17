@@ -10,7 +10,7 @@ import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 
 /** The registrant names the two entries carry, as the registry reports them. */
 const SHIPPED = 'ui-agent-preset'
-const OURS = 'omdsh-justchat'
+const OURS = 'omdsh-chatmode'
 
 const KEY = 'conversation.hero.agentPreset'
 

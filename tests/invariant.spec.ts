@@ -3,16 +3,16 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { apply, inject, name } from '../src/invariant.ts'
 
-describe('omdsh-justchat invariant companion', () => {
+describe('omdsh-chatmode invariant companion', () => {
   it('reserves the package under the invariant service', async () => {
     const disposer = (): void => {}
     const register = vi.fn(() => disposer)
     const ctx = { invariants: { register } } as unknown as Context
 
-    expect(name).toBe('omdsh-justchat-invariant')
+    expect(name).toBe('omdsh-chatmode-invariant')
     expect(inject).toEqual(['invariants'])
     await expect(apply(ctx)).resolves.toBe(disposer)
-    expect(register).toHaveBeenCalledWith('@omdsh-plugins/omdsh-justchat', expect.any(Function))
+    expect(register).toHaveBeenCalledWith('@omdsh-plugins/omdsh-chatmode', expect.any(Function))
 
     // The installer is deliberately empty: the host half's setups are
     // asserted directly, and the browser half owns no cross-plugin state.

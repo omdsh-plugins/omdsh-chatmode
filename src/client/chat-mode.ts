@@ -11,7 +11,7 @@
  *
  * Switching, then, is not a state write but a navigation: enter the mode's
  * most recent conversation, or start a new one where that mode keeps them.
- * @module @omdsh-plugins/omdsh-justchat/src/client/chat-mode
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/chat-mode
  */
 
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'

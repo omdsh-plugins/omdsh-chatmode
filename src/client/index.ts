@@ -26,7 +26,7 @@
  * current conversation lives, so the note and the chip stay correct with no
  * switch on screen. The segments cannot — so they, and only they, ride a
  * restricted fiber waiting on `sessionModes`.
- * @module @omdsh-plugins/omdsh-justchat/client
+ * @module @omdsh-plugins/omdsh-chatmode/client
  */
 
 import { createElement } from 'react'
@@ -46,10 +46,10 @@ import { PresetSeatController } from './preset-seat.ts'
 import { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
 import { resolveServices } from './services.ts'
 import { MODE_COMMANDS, SHORTCUT_SERVICE, withChord, type IShortcutClient } from './shortcut.ts'
-import { en, zh, type JustChatKey } from './locales.ts'
+import { en, zh, type ChatModeKey } from './locales.ts'
 
 export type { ChatModeState, SessionMode } from './contract.ts'
-export type { JustChatKey } from './locales.ts'
+export type { ChatModeKey } from './locales.ts'
 export { AGENT_PRESET_LOCALE_NS, presetDisplayText } from './preset-display.ts'
 export type { PresetDisplayText, PresetOption } from './preset-display.ts'
 export { PresetSeatController } from './preset-seat.ts'
@@ -69,12 +69,12 @@ export const SESSION_MODES = 'sessionModes'
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** The mode switch and the chat-mode note's copy. */
-    justchat: JustChatKey
+    chatmode: ChatModeKey
   }
 }
 
 /** Dictionary namespace owned by this plugin. */
-const NS = 'justchat'
+const NS = 'chatmode'
 
 /**
  * The colours the two shipped modes are drawn in — the switch's glyphs, and
@@ -111,7 +111,7 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'omdsh-justchat: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'omdsh-chatmode: dictionaries')
 
   const { sessions, workspaces, connection } = resolveServices(ctx)
 
@@ -131,7 +131,7 @@ export function apply(ctx: ClientContext): void {
     },
   })
 
-  ctx.effect(() => controller.start(), 'omdsh-justchat: derived session mode')
+  ctx.effect(() => controller.start(), 'omdsh-chatmode: derived session mode')
 
   // This package's two postures. A RESTRICTED fiber, and the only part of this
   // plugin that is one: a profile composed without `@omdsh-plugins/omdsh-base`
@@ -147,7 +147,7 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',
-    id: 'justchat-note',
+    id: 'chatmode-note',
     // Ahead of the todo/goal/queue rows: what the session IS precedes what it
     // is currently doing, and in chat mode those rows never appear anyway.
     order: -10,
@@ -170,7 +170,7 @@ export function apply(ctx: ClientContext): void {
     },
     noteApplied: (sessionId, preset) => { sessions.noteAgentPreset(sessionId, preset) },
   })
-  ctx.effect(() => seat.start(), 'omdsh-justchat: mode-filtered preset roster')
+  ctx.effect(() => seat.start(), 'omdsh-chatmode: mode-filtered preset roster')
 
   // Another plugin's dictionary, read at call time rather than copied: the
   // harness ships its four presets with Chinese metadata on disk and localizes
@@ -281,7 +281,7 @@ function mountSegments(
     // conversation anywhere; the derived sync fills this in immediately.
     available: false,
     enter: () => { controller.enterChat(); syncDerived(true) },
-  }), 'omdsh-justchat: chat segment')
+  }), 'omdsh-chatmode: chat segment')
 
   ctx.effect(() => segments.register({
     id: 'work',
@@ -296,21 +296,21 @@ function mountSegments(
     // Work needs nothing from this plugin — the shipped workspace picker is
     // already the screen it lands on.
     enter: () => { controller.enterWork(); syncDerived(true) },
-  }), 'omdsh-justchat: work segment')
+  }), 'omdsh-chatmode: work segment')
 
   // A New Session that reached the frame, which the switch's owner announces
   // because that gesture is the one navigation with nothing to derive from —
   // `startSession` reuses a workspace's blank conversation, so the request can
   // move no selection and publish no store. Asking is the whole fact.
   ctx.effect(() => modes.onNewSession(() => { controller.requestedNewSession() }),
-    'omdsh-justchat: a New Session the frame answered')
+    'omdsh-chatmode: a New Session the frame answered')
 
   syncDerived()
   // Wrapped rather than passed: a listener called with the snapshot would
   // arrive here as a truthy `pressed`, and every derived update would claim to
   // be a press.
-  ctx.effect(() => controller.store.subscribe(() => { syncDerived() }), 'omdsh-justchat: segment mode sync')
-  ctx.effect(() => ctx.on('locale/change', () => { applyCopy() }), 'omdsh-justchat: segment copy')
+  ctx.effect(() => controller.store.subscribe(() => { syncDerived() }), 'omdsh-chatmode: segment mode sync')
+  ctx.effect(() => ctx.on('locale/change', () => { applyCopy() }), 'omdsh-chatmode: segment copy')
 
   // The chords the two segments teach. A RESTRICTED fiber: a composition with
   // no keybinding layer has no chord to name, and the switch is still the whole
@@ -333,6 +333,6 @@ function mountSegments(
       // Back to naming no key when the layer unloads, rather than teaching one
       // that no longer exists.
       return () => { off(); chords = {}; applyCopy() }
-    }, 'omdsh-justchat: follow the mode chords')
+    }, 'omdsh-chatmode: follow the mode chords')
   })
 }

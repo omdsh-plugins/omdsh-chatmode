@@ -11,7 +11,7 @@
  * So the host half writes the file in ONE language: the one the UI is set to.
  * That is what keeps an English reader from being shown a Chinese sentence
  * they did not ask for, and vice versa.
- * @module @omdsh-plugins/omdsh-justchat/src/preset-copy
+ * @module @omdsh-plugins/omdsh-chatmode/src/preset-copy
  */
 
 /** Languages the harness's browser client ships, and this copy covers. */
@@ -64,7 +64,7 @@ export function everyPresetMetadata(): readonly string[] {
 export function renderPresetMetadata(locale: PresetLocale): string {
   const copy = COPY[locale]
   return [
-    '# Written by @omdsh-plugins/omdsh-justchat in the language the web UI is set',
+    '# Written by @omdsh-plugins/omdsh-chatmode in the language the web UI is set',
     '# to; the harness does not localize a user-authored preset\'s copy. Edit',
     '# this file and it becomes yours — the plugin then leaves it alone.',
     `name: ${quote(copy.name)}`,

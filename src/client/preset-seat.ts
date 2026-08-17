@@ -17,7 +17,7 @@
  * and is still blank. What it adds is re-deriving the shown preset whenever
  * the current session changes, which is what keeps the chip from reporting the
  * preset of the session the user just left.
- * @module @omdsh-plugins/omdsh-justchat/src/client/preset-seat
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/preset-seat
  */
 
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'

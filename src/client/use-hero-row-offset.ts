@@ -17,7 +17,7 @@
  * The offset is measured against the note's own positioning ancestor (the
  * hero stack, which the conversation skeleton positions), so it is exactly
  * the `top` an absolutely positioned note needs.
- * @module @omdsh-plugins/omdsh-justchat/src/client/use-hero-row-offset
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/use-hero-row-offset
  */
 
 import { useLayoutEffect, useState } from 'react'

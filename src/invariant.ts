@@ -1,15 +1,15 @@
 /**
- * Package-owned invariant companion for `@omdsh-plugins/omdsh-justchat`.
- * @module @omdsh-plugins/omdsh-justchat/invariant
+ * Package-owned invariant companion for `@omdsh-plugins/omdsh-chatmode`.
+ * @module @omdsh-plugins/omdsh-chatmode/invariant
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@omdsh-plugins/omdsh-justchat'
+const PACKAGE_NAME = '@omdsh-plugins/omdsh-chatmode'
 
 /** Cordis companion plugin name. */
-export const name = 'omdsh-justchat-invariant'
+export const name = 'omdsh-chatmode-invariant'
 /** Service required before the companion can reserve package ownership. */
 export const inject = ['invariants']
 

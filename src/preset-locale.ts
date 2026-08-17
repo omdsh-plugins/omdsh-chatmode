@@ -9,7 +9,7 @@
  * An absent preference means "delegate to the browser", which a host cannot
  * observe. The operating system's own language is the closest thing it has,
  * so that is the fallback, and English the fallback's fallback.
- * @module @omdsh-plugins/omdsh-justchat/src/preset-locale
+ * @module @omdsh-plugins/omdsh-chatmode/src/preset-locale
  */
 
 import { settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'

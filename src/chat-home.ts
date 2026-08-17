@@ -5,7 +5,7 @@
  *
  * Node-only: this module is the plugin's host half and never reaches the
  * browser bundle.
- * @module @omdsh-plugins/omdsh-justchat/src/chat-home
+ * @module @omdsh-plugins/omdsh-chatmode/src/chat-home
  */
 
 import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises'

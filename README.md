@@ -1,4 +1,4 @@
-# omdsh-justchat
+# omdsh-chatmode
 
 English | [中文](README.zh.md)
 
@@ -83,7 +83,7 @@ So this plugin takes the chip and filters the roster by mode:
 
 It also re-derives what it shows whenever the current session changes, so moving between workspaces reports *that* session's composition rather than the one you left.
 
-Taking the seat is done with the slot system's own rule rather than around it. `conversation.hero.agentPreset` is a `single` cell, and a single cell goes to the **lowest priority**, so this package registers at `priority: -1` over `ui-agent-preset`'s default `0`. Nothing is unregistered: withdrawing this plugin's row hands the seat straight back to the shipped chip. ([hero-seat-shadow.client.spec.ts](https://github.com/omdsh-plugins/omdsh-justchat/blob/HEAD/tests/hero-seat-shadow.client.spec.ts) drives that against the real registry, including the collision a same-priority registration would throw.)
+Taking the seat is done with the slot system's own rule rather than around it. `conversation.hero.agentPreset` is a `single` cell, and a single cell goes to the **lowest priority**, so this package registers at `priority: -1` over `ui-agent-preset`'s default `0`. Nothing is unregistered: withdrawing this plugin's row hands the seat straight back to the shipped chip. ([hero-seat-shadow.client.spec.ts](https://github.com/omdsh-plugins/omdsh-chatmode/blob/HEAD/tests/hero-seat-shadow.client.spec.ts) drives that against the real registry, including the collision a same-priority registration would throw.)
 
 Preset **names** still come from the harness. It ships its four presets with Chinese metadata on disk and localizes them in the browser, out of the `settings.agentPreset` dictionary `ui-agent-preset` registers — so this chip reads that dictionary at call time instead of copying it. A locally authored preset is never translated: its file is its copy. Where the dictionary is absent (a composition without `ui-agent-preset`), the lookup echoes its key back and the chip falls back to file metadata rather than showing a locale key.
 
@@ -100,7 +100,7 @@ That persona is the complete system prompt: no tool guidance, no runtime context
 ## Install
 
 ```sh
-dsh plugin --profile web add @omdsh-plugins/omdsh-justchat
+dsh plugin --profile web add @omdsh-plugins/omdsh-chatmode
 dsh plugin --profile web add @omdsh-plugins/omdsh-base       # the switch its segments appear in
 ```
 
@@ -111,8 +111,8 @@ That second line is not optional decoration: without [omdsh-base](https://github
 **Either way, `lib/` must exist before `dsh web` runs.** The loader imports `lib/index.js` directly, and a missing one is not a degraded UI — the whole profile tree fails to load:
 
 ```
-dsh: plugin tree failed to load: ... failed to import loader entry justchat
-(@omdsh-plugins/omdsh-justchat): Cannot find module '.../lib/index.js'
+dsh: plugin tree failed to load: ... failed to import loader entry chatmode
+(@omdsh-plugins/omdsh-chatmode): Cannot find module '.../lib/index.js'
 ```
 
 ### From a local path or `link:`
@@ -134,14 +134,14 @@ Rebuild after every source change, for the same reason.
 A git dependency builds itself through `prepare`, which this package supports: its committed `@deepseek-ai/*` devDependencies name the published harness release, so a bare clone can install and compile.
 
 ```sh
-dsh plugin --profile web add github:omdsh-plugins/omdsh-justchat#<commit>
+dsh plugin --profile web add github:omdsh-plugins/omdsh-chatmode#<commit>
 ```
 
 The first attempt **fails**: pnpm ≥10 refuses to run a git dependency's `prepare` until you allow the package by name. Add it to the profile's own `pnpm-workspace.yaml` (`$DSH_HOME/profiles/web/pnpm-workspace.yaml`, which `dsh` writes with `packages: - .`, `nodeLinker: hoisted`, `autoInstallPeers: false`):
 
 ```yaml
 allowBuilds:
-  '@omdsh-plugins/omdsh-justchat': true
+  '@omdsh-plugins/omdsh-chatmode': true
 ```
 
 then re-run the `add`, and `dsh web`. That entry authorizes this package to run install-time code on your machine — here, `tsc` and `tsdown` — so pin a commit rather than tracking a branch, and read the diff before moving the pin.
@@ -149,7 +149,7 @@ then re-run the `add`, and `dsh web`. That entry authorizes this package to run 
 Remove it the same way:
 
 ```sh
-dsh plugin --profile web remove @omdsh-plugins/omdsh-justchat
+dsh plugin --profile web remove @omdsh-plugins/omdsh-chatmode
 ```
 
 The chat directory, its session logs, and the preset are left on disk — removing a plugin is not a request to delete conversations.

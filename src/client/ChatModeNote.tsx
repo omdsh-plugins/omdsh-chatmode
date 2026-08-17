@@ -12,7 +12,7 @@
  * The note is for the blank phase only: once the conversation is under way,
  * its answers are the evidence of what the agent can do, and a standing
  * banner would just be chrome. In Work mode the entry renders nothing at all.
- * @module @omdsh-plugins/omdsh-justchat/src/client/ChatModeNote
+ * @module @omdsh-plugins/omdsh-chatmode/src/client/ChatModeNote
  */
 
 import { useState } from 'react'
