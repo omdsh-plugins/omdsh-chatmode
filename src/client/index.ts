@@ -3,7 +3,7 @@
  * own, over one derived fact: a session is a chat exactly when it lives in the
  * managed Chat workspace.
  *
- * - `sessionModes` (`@omdsh-plugins/omdsh-base`) — the Chat and Work segments,
+ * - `sessionModes` (`@omdsh-plugins/omdsh-basemode`) — the Chat and Work segments,
  *   registered into the switch that package renders. Two postures among
  *   however many the profile composed, reaching the control the same way Code
  *   mode does.
@@ -17,7 +17,7 @@
  *
  * Nothing here is a harness change, and nothing here is required: the segments
  * ride a restricted fiber waiting on `sessionModes`, so a profile composed
- * without `@omdsh-plugins/omdsh-base` loses two pills rather than a page.
+ * without `@omdsh-plugins/omdsh-basemode` loses two pills rather than a page.
  * @module @omdsh-plugins/omdsh-chatmode/client
  */
 
@@ -27,9 +27,9 @@ import { IconFolderOpenOutline16, IconNewChatOutline16 } from '@deepseek-ai/dsh-
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only, and deliberately: the registry is bound by NAME at runtime, so
-// nothing of omdsh-base reaches this bundle. A value import would be a
+// nothing of omdsh-basemode reaches this bundle. A value import would be a
 // client-bundle purity error.
-import type { SessionModes } from '@omdsh-plugins/omdsh-base/client'
+import type { SessionModes } from '@omdsh-plugins/omdsh-basemode/client'
 import { ChatModeController } from './chat-mode.ts'
 import { ChatPinController } from './pin.ts'
 import { resolveServices } from './services.ts'
@@ -43,7 +43,7 @@ export type { ChatPinDeps, PinMove } from './pin.ts'
 
 /**
  * Service name the segment registry is published under, by
- * `@omdsh-plugins/omdsh-base`.
+ * `@omdsh-plugins/omdsh-basemode`.
  *
  * A literal rather than an import, for the reason `shortcut.ts` mirrors its
  * own: cordis binds services by name at runtime, and a cross-plugin value
@@ -79,11 +79,32 @@ export const WORK_TONE = 'var(--dsw-static-deepseek-450)'
 
 /**
  * The segment id this package's everything-else posture answers to — the same
- * word `omdsh-base`'s baseline uses, because it is the same posture under two
+ * word `omdsh-basemode`'s baseline uses, because it is the same posture under two
  * suppliers. Named here so the one place that asks "does another mode claim
  * this conversation" cannot drift from the registration below.
  */
 export const WORK_SEGMENT = 'work'
+
+/**
+ * What the Chat segment declares about where its conversations live: NOT in a
+ * project.
+ *
+ * They are filed in a directory this plugin manages, which is a store rather
+ * than somewhere anyone works — so a surface asking "which project is on
+ * screen" gets "none" for a chat, and a mode that would derive a directory
+ * from the conversation on screen knows not to. Code mode is the one that
+ * does: pressing it beside a chat used to open a terminal inside the folder
+ * chats are filed in. Only the plugin that keeps that directory can say this,
+ * which is why it is said here.
+ *
+ * Spread into the registration rather than written in it, and that is the
+ * point of the constant: `ModeSegmentInput` gained the field in a release of
+ * `@omdsh-plugins/omdsh-basemode` newer than the one this package compiles
+ * against, and a literal property would be an excess-property error there
+ * while a spread is not. An older registry drops the field and every surface
+ * reads "in a project", which is what they read before the question existed.
+ */
+const NOT_IN_A_PROJECT = { inProject: false }
 
 /**
  * The switch's glyphs, built once.
@@ -156,7 +177,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => pin.start(), 'omdsh-chatmode: the Chat workspace stays on top')
 
   // This package's two postures, on a RESTRICTED fiber: a profile composed
-  // without `@omdsh-plugins/omdsh-base` has no switch for a segment to appear
+  // without `@omdsh-plugins/omdsh-basemode` has no switch for a segment to appear
   // in, while the derived mode above goes on being derived for whoever reads
   // it. Off is two missing pills, not a dead page — see rule 9 of the
   // conventions for why this is not an `inject`.
@@ -258,6 +279,7 @@ function mountSegments(
     // The same rule the switch is derived from, asked per conversation: what
     // makes a session a chat is living in the managed Chat workspace.
     owns: (sessionId: string) => controller.owns(sessionId),
+    ...NOT_IN_A_PROJECT,
     // Chat needs the host's managed workspace before it can put a
     // conversation anywhere; the derived sync fills this in immediately.
     available: false,

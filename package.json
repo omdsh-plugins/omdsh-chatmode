@@ -85,7 +85,7 @@
     "@deepseek-ai/dsh-home-paths": ">=0.1.0-rc.6",
     "@deepseek-ai/dsh-invariants": ">=0.1.0-rc.6",
     "@deepseek-ai/dsh-workspace": ">=0.1.0-rc.6",
-    "@omdsh-plugins/omdsh-base": "*",
+    "@omdsh-plugins/omdsh-basemode": "*",
     "react": "^18.2.0"
   },
   "devDependencies": {
@@ -105,7 +105,7 @@
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@vitest/coverage-v8": "^4.1.8",
-    "@omdsh-plugins/omdsh-base": "^0.1.0",
+    "@omdsh-plugins/omdsh-basemode": "^0.2.0",
     "js-yaml": "^5.2.3",
     "jsdom": "^26.0.0",
     "lightningcss": "^1.30.2",

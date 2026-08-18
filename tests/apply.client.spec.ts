@@ -5,14 +5,14 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionListState, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
-import { ModeSegmentRegistry } from '@omdsh-plugins/omdsh-base/src/client/mode-segments.ts'
+import { ModeSegmentRegistry } from '@omdsh-plugins/omdsh-basemode/src/client/mode-segments.ts'
 import { apply, inject, SESSION_MODES } from '../src/client/index.ts'
 import { CHAT_WORKSPACE_TITLE } from '../src/client/chat-mode.ts'
 import { en } from '../src/client/locales.ts'
 
 /** A fake client root plus the service doubles the plugin resolves by name. */
 function bench(options: {
-  /** Compose without the mode system, the way a profile with no omdsh-base does. */
+  /** Compose without the mode system, the way a profile with no omdsh-basemode does. */
   modes?: false
 } = {}) {
   const sessions = createSnapshotStore<SessionListState>({
@@ -38,6 +38,15 @@ function bench(options: {
   // driving this plugin through a hand-written double would keep passing after
   // the contract moved out from under it.
   const modes = new ModeSegmentRegistry()
+  // What this plugin HANDS the registry, recorded before it goes in: a field
+  // the published registry is too old to store is still this package's to
+  // declare, and nothing else would notice it going missing.
+  const registered: Record<string, unknown>[] = []
+  const passThrough = modes.register.bind(modes)
+  modes.register = (segment) => {
+    registered.push(segment as unknown as Record<string, unknown>)
+    return passThrough(segment)
+  }
   const services: Record<string, unknown> = {
     sessions: { list: sessions, open, clear },
     workspaces: { list: workspaces, startSession },
@@ -75,7 +84,7 @@ function bench(options: {
   } as unknown as ClientContext
 
   apply(ctx)
-  return { ctx, modes, registrations, open, clear, startSession, sessions, workspaces, disposers }
+  return { ctx, modes, registered, registrations, open, clear, startSession, sessions, workspaces, disposers }
 }
 
 /**
@@ -123,6 +132,19 @@ describe('omdsh-chatmode browser half', () => {
     ])
   })
 
+  it('declares that a chat is in no project, and a working conversation is', () => {
+    // The declaration a surface deriving a DIRECTORY from the conversation on
+    // screen reads — Code mode, which used to open a terminal inside the
+    // folder chats are filed in. It rides a spread so an older registry drops
+    // it rather than refusing to compile, which is exactly the shape a spec
+    // has to hold: nothing else would notice it going missing.
+    const b = bench()
+    expect(b.registered.find(segment => segment.id === 'chat')?.inProject).toBe(false)
+    // Work says nothing, which is the default and the honest answer: a working
+    // conversation lives in the project directory it is grouped under.
+    expect(b.registered.find(segment => segment.id === 'work')?.inProject).toBeUndefined()
+  })
+
   it('wires each segment press to the session and workspace services', () => {
     const b = bench()
     b.modes.enter('chat')
@@ -154,7 +176,7 @@ describe('omdsh-chatmode browser half', () => {
   })
 
   it('takes the column back on a New Session the frame answered', () => {
-    // Routing the request to the active posture is omdsh-base's job; hearing
+    // Routing the request to the active posture is omdsh-basemode's job; hearing
     // that no posture took it is this package's, because that gesture leaves
     // nothing else to derive from — the runtime reuses a workspace's blank
     // session and opens the id that was already open, so nothing moves and a
@@ -183,14 +205,14 @@ describe('omdsh-chatmode browser half', () => {
 
   it('mounts without a mode system, and contributes nothing at all', () => {
     // The off state, and the reason the segments ride a restricted fiber: a
-    // profile with no omdsh-base gets two missing pills rather than a dead
+    // profile with no omdsh-basemode gets two missing pills rather than a dead
     // page.
     const b = bench({ modes: false })
     expect(b.registrations).toEqual([])
     expect(b.modes.store.getSnapshot()).toEqual([])
   })
 
-  it('names the registry by the wire word omdsh-base publishes it under', () => {
+  it('names the registry by the wire word omdsh-basemode publishes it under', () => {
     // A literal on both sides rather than a shared symbol: cordis binds
     // services by name, and a cross-plugin value import is a purity error.
     expect(SESSION_MODES).toBe('sessionModes')

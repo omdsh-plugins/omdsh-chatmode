@@ -12,10 +12,10 @@ Harness 是编码 Agent，新建会话时要先选工作区——这本身是合
 
 | 界面 | 从哪来 |
 |---|---|
-| 模式开关里的 **Chat** 与 **Work** 两个分段 | 向 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 发布的分段注册表 `sessionModes` 的两次注册 |
+| 模式开关里的 **Chat** 与 **Work** 两个分段 | 向 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) 发布的分段注册表 `sessionModes` 的两次注册 |
 | 侧栏里的 **Chat** 分组 | 一个真实目录（`<dshHome>/sessions/chat`），由本插件注册并始终保持标题为 `Chat`，侧栏把它当普通工作区渲染 |
 | 不管后来又打开了多少个项目，这个分组始终是**第一个** | 宿主侧在启动时把它放到最前，浏览器侧把它按在那儿——见 [Chat 始终在最上面](#chat-始终在最上面) |
-| 侧边栏里这些对话前面的绿点与蓝点 | 这两个分段携带的 `tone` 与 `owns`；圆点本身由 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 为所有已注册的模式统一绘制 |
+| 侧边栏里这些对话前面的绿点与蓝点 | 这两个分段携带的 `tone` 与 `owns`；圆点本身由 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) 为所有已注册的模式统一绘制 |
 
 **不改 harness 的任何一行。** 这个包本身是一个 profile *bundle*：`dsh plugin` 把它装进 profile 并追加到该 profile 的层栈，它那一行 loader 记录就叠在出厂的树之上。卸载插件，这一行、两个分段、以及它用到的所有接缝一起消失。它在会话视图里不占任何一个座位。
 
@@ -38,12 +38,14 @@ Harness 是编码 Agent，新建会话时要先选工作区——这本身是合
 
 也不可能是：一个会话列不是网页对话的姿态，**显示一个项目却不在里面选中任何东西**。Code 模式的终端正是如此，而且是刻意的——一段 Code 对话是被显示、而不是被选中的，因为选中它就是让这个 host 去恢复一份别的进程正在写的日志。于是当你看着项目 B 的终端时，运行时的选中项还停在项目 A 里你之前打开的那一段；一个去读选中项的 Work，就把你带回了 A。
 
-屏幕上是哪个项目，答案是 `sessionModes.column`——[omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 正是为这一类问题发布它的。有了它，后面每一个答案都留在这个项目里：在这里上次离开的那一段，没有就是这里最近的一段，再没有就在这里新开一段——绝不会是另一个项目的，无论它多"新"。
+屏幕上是哪个项目，答案是 `sessionModes.column`——[omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) 正是为这一类问题发布它的。有了它，后面每一个答案都留在这个项目里：在这里上次离开的那一段，没有就是这里最近的一段，再没有就在这里新开一段——绝不会是另一个项目的，无论它多"新"。
 
 "这里最近的一段"排除两种：
 
 - **被别的姿态认领的对话。** 打开一段 Code 对话会显示终端，等于把会话列又推回这次按下正想离开的那个模式。这个问题由注册表回答（`modeOf`），所以以后加了新模式它依然是对的。
 - **空白对话，除非只剩它。** 一段空白对话"新"是因为它刚被**创建**，而不是因为里面说过什么；而一个项目会攒下不少——每一次按了新会话又走开都留一段。当这个项目再没有别的了，那一段就是它的「新会话」行，打开它好过在旁边再起一段。
+
+一段聊天就是「会话列不在任何项目里」，而这句话是本包说的：它的 Chat 分段声明了 `inProject: false`——注册表用这个字段问「你这个模式的对话是不是归档在有人干活的地方」。只有管着那个目录的插件能回答，而回答了就把「这几个里哪个是 Chat」挡在了其它每个插件之外：[omdsh-codemode](https://github.com/omdsh-plugins/omdsh-codemode) 正是读它才知道，在一段聊天旁边按 Code 意味着回到 Code 上次待的地方，而不是在聊天归档的文件夹里开个终端。
 
 只有当会话列本身不在任何项目里时，才会落回那份跨项目的记忆：一段聊天，或者根本没装模式系统的页面。"我在哪个项目"在那里没有答案，而"带我回去干活"有。
 
@@ -62,11 +64,11 @@ modes.register({
 
 接下这个请求的模式会保住会话列——这正是「新建会话仍停留在当前模式」而不是被丢回 Work 的原因。拒绝的、或者压根没有这个答案的（Chat 与 Work 就是），走框架自己的 New Session，并连同会话列一起交出去。这个请求**永远不会在按下分段的过程中**被提出：进入一个没有旧对话可回的模式同样会新建会话，而那发生在被离开的那个模式还挂着 active 标志的时候。
 
-把这个请求路由出去是 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 的活，不是本包的。本包的活是**听到**那种没有东西可推导的情况：**New Session** 会复用该工作区已有的空白对话，所以当你已经在那段对话上时按它，打开的就是已经打开的那个 id——选择没动、列表没变、store 也不发布。注册表会把这条"落到框架"的路广播出来（`onNewSession`），本包据此重新推导。没有这一层，处在贡献姿态里的人按下 New Session，屏幕不会有任何变化。
+把这个请求路由出去是 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) 的活，不是本包的。本包的活是**听到**那种没有东西可推导的情况：**New Session** 会复用该工作区已有的空白对话，所以当你已经在那段对话上时按它，打开的就是已经打开的那个 id——选择没动、列表没变、store 也不发布。注册表会把这条"落到框架"的路广播出来（`onNewSession`），本包据此重新推导。没有这一层，处在贡献姿态里的人按下 New Session，屏幕不会有任何变化。
 
 ## 这个开关不是本包的
 
-Chat 和 Work 只是 profile 组出来的若干姿态中的两个。它们所在的那个控件、它们注册进去的那个注册表、以及它们的对话在侧边栏里得到的彩色圆点，全都属于 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)——包括"同一时刻只有一个分段激活"这条规则，正是它让按下 **Code** 能把这两个清掉。
+Chat 和 Work 只是 profile 组出来的若干姿态中的两个。它们所在的那个控件、它们注册进去的那个注册表、以及它们的对话在侧边栏里得到的彩色圆点，全都属于 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode)——包括"同一时刻只有一个分段激活"这条规则，正是它让按下 **Code** 能把这两个清掉。
 
 本包够到那个开关的方式，和任何别的模式插件一模一样：
 
@@ -82,7 +84,7 @@ ctx.inject(['sessionModes'], (mctx) => {
 
 Chat 与 Work 依然是从"当前会话住在哪"推导出来的，所以从侧边栏打开一段对话仍然会让开关跟着动，按下任意一个都会把会话列从占着它的那一方手里拿回来。`owns` 是各自为自己作答的部分：Chat 认领记在托管工作区名下的那些对话，而 Work 标了 `fallback`——当没有更具体的说法成立时，一段对话就是"某个项目里的一段对话"。
 
-**两个搭档插件都不是必需的，也都没有出现在顶层 `inject` 里。** 没有 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) 时就没有开关可供分段出现，那两枚 pill 干脆不存在——Chat 工作区、它的置顶、以及推导出来的模式本身照常工作，因为它们读的是"当前会话住在哪"，而不是开关。没有 [omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) 时，分段的 tooltip 只是不写按键：本包不绑定任何键、也不注册任何命令，只是在那个插件报出 `mode.chat` 与 `mode.work` 的快捷键时，把它接在提示后面。两个服务都是在 `apply` 内部启动的受限 fiber 里够到的——正是这一点，让缺一个搭档插件不至于把某条 loader 条目留在 `pending` 上、进而让整页的启动扫描失败：那会是一个死掉的界面，而不是少一个分段。
+**两个搭档插件都不是必需的，也都没有出现在顶层 `inject` 里。** 没有 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) 时就没有开关可供分段出现，那两枚 pill 干脆不存在——Chat 工作区、它的置顶、以及推导出来的模式本身照常工作，因为它们读的是"当前会话住在哪"，而不是开关。没有 [omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) 时，分段的 tooltip 只是不写按键：本包不绑定任何键、也不注册任何命令，只是在那个插件报出 `mode.chat` 与 `mode.work` 的快捷键时，把它接在提示后面。两个服务都是在 `apply` 内部启动的受限 fiber 里够到的——正是这一点，让缺一个搭档插件不至于把某条 loader 条目留在 `pending` 上、进而让整页的启动扫描失败：那会是一个死掉的界面，而不是少一个分段。
 
 ## 聊天跑的是什么
 
@@ -133,14 +135,14 @@ GitHub 仓库装上，并把那条 pnpm 构建白名单写好——裸的 `dsh p
 只要 profile 里已经有插件中心，它就在**设置 → 插件 → 插件中心**里这个插件的卡片
 上。
 
-[omdsh-base](https://github.com/omdsh-plugins/omdsh-base)——它的分段要出现在那个
+[omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode)——它的分段要出现在那个
 开关里——已经发布，所以那一个按名字装：
 
 ```sh
-dsh plugin --profile web add @omdsh-plugins/omdsh-base
+dsh plugin --profile web add @omdsh-plugins/omdsh-basemode
 ```
 
-第二次安装不是可有可无的装饰：没有 [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)，**Chat** 与 **Work** 两枚 pill 根本不存在。本包其余的一切照常工作——[「这个开关不是本包的」](#这个开关不是本包的)写清楚了那个状态下什么在、什么不在，以及它为什么是无害的而不是致命的。
+第二次安装不是可有可无的装饰：没有 [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode)，**Chat** 与 **Work** 两枚 pill 根本不存在。本包其余的一切照常工作——[「这个开关不是本包的」](#这个开关不是本包的)写清楚了那个状态下什么在、什么不在，以及它为什么是无害的而不是致命的。
 
 `dsh plugin` 会在 `$DSH_HOME/profiles/web` 里转发给 pnpm，然后按已安装状态对账该 profile 的 `dsh.profile.bundles`：本包声明了 `dsh.bundle`，所以会自动加入层栈。下次启动时 host 侧会创建 `<dshHome>/sessions/chat`、把它注册成 `Chat` 工作区、并把早先版本装下的 `chat` 预设收回。
 

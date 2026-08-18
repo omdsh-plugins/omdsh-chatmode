@@ -9,7 +9,7 @@
  * else reads.
  *
  * The switch itself is not here and not this package's: it rides
- * `shell.overlay` for `@omdsh-plugins/omdsh-base`, which renders whatever
+ * `shell.overlay` for `@omdsh-plugins/omdsh-basemode`, which renders whatever
  * postures are registered. Chat and Work are two of them.
  * @module @omdsh-plugins/omdsh-chatmode/src/client/contract
  */

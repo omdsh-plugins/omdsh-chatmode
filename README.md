@@ -12,10 +12,10 @@ Where the conversation lives is the whole of it. A chat runs the same agent a wo
 
 | Surface | Where it comes from |
 |---|---|
-| The **Chat** and **Work** segments in the mode switch | Two registrations in `sessionModes`, the segment registry [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) publishes |
+| The **Chat** and **Work** segments in the mode switch | Two registrations in `sessionModes`, the segment registry [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) publishes |
 | The **Chat** workspace group in the sidebar | A real directory (`<dshHome>/sessions/chat`) this plugin registers and keeps titled `Chat` — the sidebar renders it like any other workspace |
 | That group staying the **first** one, however many projects you open | The host half puts it first at boot; the browser half holds it there — see [Chat stays on top](#chat-stays-on-top) |
-| The green and blue dots on those conversations in the sidebar | The `tone` and `owns` these two segments carry; the dots themselves are painted by [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) for whatever modes are registered |
+| The green and blue dots on those conversations in the sidebar | The `tone` and `owns` these two segments carry; the dots themselves are painted by [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) for whatever modes are registered |
 
 **Nothing in the harness is modified.** This package is a profile *bundle*: `dsh plugin` installs it into a profile and appends it to that profile's layer stack, so its one loader row is composed over the shipped tree. Removing the plugin removes the row, both segments, and every seam it used. It takes no seat in the conversation view at all.
 
@@ -38,12 +38,14 @@ Pressing a segment moves between ways of looking at one project, not between pro
 
 It cannot be: a posture whose column is not the web conversation shows a project **without selecting anything in it**. Code mode's terminal is exactly that, deliberately — a Code conversation is shown, never selected, because selecting one is what makes this host resume a log another process owns. So while you look at a terminal in project B, the runtime's selection is still whatever you had open in project A, and a Work that read the selection took you back to A.
 
-The project on screen is `sessionModes.column`, which [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) publishes for exactly this class of question. With one in hand, every answer stays inside it: the conversation last left there, else its most recent one, else a new one started there — never another project's, however recently it was open.
+The project on screen is `sessionModes.column`, which [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) publishes for exactly this class of question. With one in hand, every answer stays inside it: the conversation last left there, else its most recent one, else a new one started there — never another project's, however recently it was open.
 
 Two exclusions decide "its most recent one":
 
 - **Conversations another posture claims.** Opening a Code conversation shows a terminal, which would put the column straight back into the mode the press was leaving. The registry answers this (`modeOf`), so it stays right as modes are added.
 - **Blank ones, unless they are all there is.** A blank conversation is recent because it was *created* recently, not because anything was said in it, and a project collects them — one per New Session pressed and walked away from. When the project has nothing else, the blank IS its New Session row and opening it beats starting another beside it.
+
+A chat is a column in no project of its own, and this package says so: its Chat segment declares `inProject: false`, which is the registry's own way of asking "does this mode file its conversations somewhere a person works". Only the plugin that keeps that directory can answer it, and answering keeps "which of these is Chat" out of every other plugin — [omdsh-codemode](https://github.com/omdsh-plugins/omdsh-codemode) reads it to know that pressing Code beside a chat means coming back to where Code was, not opening a terminal inside the folder chats are filed in.
 
 Only a column in no project of its own falls through to the memory that spans projects: a chat, or a page with no mode system at all. "Which project am I in" has no answer there, and "take me back to work" does.
 
@@ -62,11 +64,11 @@ modes.register({
 
 A mode that answers keeps the column, which is what makes New Session stay in the mode the user is in rather than dropping them back into Work. A mode that declines — or has no answer, which is Chat and Work — gets the frame's own New Session, and gives the column up with it. The request is never offered *during* a press: entering a mode with nothing to return to starts a session too, and that runs while the mode being left is still the active one.
 
-Routing that request is [omdsh-base](https://github.com/omdsh-plugins/omdsh-base)'s job, not this package's. What is this package's is hearing about the case with nothing to derive from: **New Session** reuses the workspace's existing blank conversation, so pressing it while already on that conversation opens the id that is already open — no selection moves, no list changes, no store publishes. The registry announces the passthrough (`onNewSession`) and this package re-derives on it. Without that, a person in a contributed posture presses New Session and the screen does not change.
+Routing that request is [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode)'s job, not this package's. What is this package's is hearing about the case with nothing to derive from: **New Session** reuses the workspace's existing blank conversation, so pressing it while already on that conversation opens the id that is already open — no selection moves, no list changes, no store publishes. The registry announces the passthrough (`onNewSession`) and this package re-derives on it. Without that, a person in a contributed posture presses New Session and the screen does not change.
 
 ## The switch is not this package's
 
-Chat and Work are two segments among however many the profile composed. The control they sit in, the registry they register through, and the coloured dots their conversations get in the sidebar all belong to [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) — including the rule that exactly one segment is active, which is what lets pressing **Code** clear these two.
+Chat and Work are two segments among however many the profile composed. The control they sit in, the registry they register through, and the coloured dots their conversations get in the sidebar all belong to [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) — including the rule that exactly one segment is active, which is what lets pressing **Code** clear these two.
 
 This package reaches that switch the same way any other mode plugin does:
 
@@ -83,7 +85,7 @@ ctx.inject(['sessionModes'], (mctx) => {
 
 Chat and Work stay derived from where the current session lives, so opening a conversation from the sidebar still moves the switch, and pressing either takes the column back from whatever had it. `owns` is what each answers for itself: Chat claims the conversations accounted under the managed workspace, and Work is marked `fallback` — "a conversation in a project" is what one is when nothing more specific is true.
 
-**Neither companion plugin is required, and neither appears in a top-level `inject`.** Without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) there is no switch for a segment to appear in, so the two pills are simply not there — the Chat workspace, its pin, and the derived mode itself go on working, because they read where the current session lives rather than the switch. Without [omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) the segments' tooltips name no key: this package binds nothing and registers no command, it only appends the chord that plugin reports for `mode.chat` and `mode.work` when one reaches this surface. Both services are reached from restricted fibers started inside `apply` — which is what keeps a missing companion from leaving a loader entry `pending` and failing the page's boot sweep, a dead UI rather than a missing segment.
+**Neither companion plugin is required, and neither appears in a top-level `inject`.** Without [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) there is no switch for a segment to appear in, so the two pills are simply not there — the Chat workspace, its pin, and the derived mode itself go on working, because they read where the current session lives rather than the switch. Without [omdsh-shortcuts](https://github.com/omdsh-plugins/omdsh-shortcuts) the segments' tooltips name no key: this package binds nothing and registers no command, it only appends the chord that plugin reports for `mode.chat` and `mode.work` when one reaches this surface. Both services are reached from restricted fibers started inside `apply` — which is what keeps a missing companion from leaving a loader entry `pending` and failing the page's boot sweep, a dead UI rather than a missing segment.
 
 ## What a chat runs
 
@@ -135,14 +137,14 @@ this package is not on npm, and pnpm answers `ERR_PNPM_FETCH_404`. The same
 install is also a button, on this plugin's card in **Settings → Plugins → Plugin
 hub**, once the hub itself is in the profile.
 
-[omdsh-base](https://github.com/omdsh-plugins/omdsh-base) — the switch its
+[omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) — the switch its
 segments appear in — is published, so that one installs by name:
 
 ```sh
-dsh plugin --profile web add @omdsh-plugins/omdsh-base
+dsh plugin --profile web add @omdsh-plugins/omdsh-basemode
 ```
 
-That second install is not optional decoration: without [omdsh-base](https://github.com/omdsh-plugins/omdsh-base) there are no **Chat** and **Work** pills at all. Everything else this package does goes on working — ["The switch is not this package's"](#the-switch-is-not-this-packages) says exactly what is and is not there in that state, and why it is inert rather than fatal.
+That second install is not optional decoration: without [omdsh-basemode](https://github.com/omdsh-plugins/omdsh-basemode) there are no **Chat** and **Work** pills at all. Everything else this package does goes on working — ["The switch is not this package's"](#the-switch-is-not-this-packages) says exactly what is and is not there in that state, and why it is inert rather than fatal.
 
 `dsh plugin` forwards to pnpm in `$DSH_HOME/profiles/web`, then reconciles that profile's `dsh.profile.bundles` against what is installed: this package declares `dsh.bundle`, so it joins the layer stack automatically. On the next boot the host half creates `<dshHome>/sessions/chat`, registers it as the `Chat` workspace, and takes back the `chat` preset an earlier version installed.
 
