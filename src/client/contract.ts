@@ -6,7 +6,8 @@
  * note and a shadow of the harness's preset chip — and both belonged to a mode
  * that decided the agent composition. It no longer does, so the shipped chip is
  * back in its own seat and this file is down to the derived fact everything
- * else reads.
+ * else reads. The workspace chip on the new-session row is marked rather than
+ * seated; see hero-picker.ts.
  *
  * The switch itself is not here and not this package's: it rides
  * `shell.overlay` for `@omdsh-plugins/omdsh-basemode`, which renders whatever

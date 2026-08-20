@@ -6,7 +6,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionListState, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { ModeSegmentRegistry } from '@omdsh-plugins/omdsh-basemode/src/client/mode-segments.ts'
-import { apply, inject, SESSION_MODES } from '../src/client/index.ts'
+import { apply, HIDE_ATTRIBUTE, inject, SESSION_MODES } from '../src/client/index.ts'
 import { CHAT_WORKSPACE_TITLE } from '../src/client/chat-mode.ts'
 import { en } from '../src/client/locales.ts'
 
@@ -117,9 +117,44 @@ describe('omdsh-chatmode browser half', () => {
     // It used to hold two — a dock note and a shadow of ui-agent-preset's own
     // chip — and both belonged to a mode that decided the composition. The
     // shipped chip is back in its seat, offering every preset the deployment
-    // supplies, which is the whole of "the mode no longer decides".
+    // supplies, which is the whole of "the mode no longer decides". The
+    // workspace chip is marked rather than replaced, so this still registers
+    // nothing.
     const b = bench()
     expect(b.registrations).toEqual([])
+  })
+
+  it('takes the workspace chip off Chat\'s new-session row, and leaves the preset chip', () => {
+    const workspace = document.createElement('button')
+    workspace.setAttribute('aria-haspopup', 'menu')
+    const slot = document.createElement('div')
+    slot.setAttribute('data-slot', 'conversation.hero.workspace')
+    const preset = document.createElement('button')
+    preset.setAttribute('aria-haspopup', 'menu')
+    const presetSlot = document.createElement('div')
+    presetSlot.setAttribute('data-slot', 'conversation.hero.agentPreset')
+    presetSlot.append(preset)
+    const row = document.createElement('div')
+    row.append(workspace, slot, presetSlot)
+    document.body.append(row)
+
+    const b = bench()
+    expect(workspace.hasAttribute(HIDE_ATTRIBUTE)).toBe(false)
+
+    const listed = b.workspaces.getSnapshot()
+    b.workspaces.set({
+      ...listed,
+      items: listed.items.map(item => item.title === CHAT_WORKSPACE_TITLE
+        ? { ...item, sessionIds: ['c1' as never] }
+        : item),
+    })
+    openSession(b, 'c1')
+    expect(workspace.hasAttribute(HIDE_ATTRIBUTE)).toBe(true)
+    expect(preset.hasAttribute(HIDE_ATTRIBUTE)).toBe(false)
+
+    for (const dispose of b.disposers) dispose()
+    expect(workspace.hasAttribute(HIDE_ATTRIBUTE)).toBe(false)
+    row.remove()
   })
 
   it('registers its own two segments and reports the derived mode through them', () => {
@@ -206,10 +241,31 @@ describe('omdsh-chatmode browser half', () => {
   it('mounts without a mode system, and contributes nothing at all', () => {
     // The off state, and the reason the segments ride a restricted fiber: a
     // profile with no omdsh-basemode gets two missing pills rather than a dead
-    // page.
+    // page. The workspace chip still comes off a chat's new-session row,
+    // because that mark follows the derived mode, not the switch.
+    const workspace = document.createElement('button')
+    workspace.setAttribute('aria-haspopup', 'menu')
+    const slot = document.createElement('div')
+    slot.setAttribute('data-slot', 'conversation.hero.workspace')
+    document.body.append(workspace, slot)
+
     const b = bench({ modes: false })
     expect(b.registrations).toEqual([])
     expect(b.modes.store.getSnapshot()).toEqual([])
+
+    const listed = b.workspaces.getSnapshot()
+    b.workspaces.set({
+      ...listed,
+      items: listed.items.map(item => item.title === CHAT_WORKSPACE_TITLE
+        ? { ...item, sessionIds: ['c1' as never] }
+        : item),
+    })
+    openSession(b, 'c1')
+    expect(workspace.hasAttribute(HIDE_ATTRIBUTE)).toBe(true)
+
+    for (const dispose of b.disposers) dispose()
+    workspace.remove()
+    slot.remove()
   })
 
   it('names the registry by the wire word omdsh-basemode publishes it under', () => {

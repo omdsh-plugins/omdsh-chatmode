@@ -7,17 +7,23 @@
  *   registered into the switch that package renders. Two postures among
  *   however many the profile composed, reaching the control the same way Code
  *   mode does.
+ * - the workspace chip on the new-session row, taken off while Chat is
+ *   showing, because Chat has no project to pick. Not a seat: a mark on the
+ *   shipped button ([hero-picker](./hero-picker.ts)).
  *
- * That is the whole surface. It used to be more: a dock note stating that a
- * chat session had no tools, and a preset chip shadowing the harness's own so
- * the mode could decide the composition. Both went with the composition
- * itself — a chat now runs the deployment's default preset, the shipped chip
- * offers every preset the deployment supplies, and the mode is once again only
- * a statement about where the conversation lives.
+ * It used to be more: a dock note stating that a chat session had no tools,
+ * and a preset chip shadowing the harness's own so the mode could decide the
+ * composition. Both went with the composition itself — a chat now runs the
+ * deployment's default preset, the shipped chip offers every preset the
+ * deployment supplies, and the mode is once again only a statement about
+ * where the conversation lives. The workspace chip is a different fact: it
+ * asked for a project on a screen that is not in one.
  *
  * Nothing here is a harness change, and nothing here is required: the segments
  * ride a restricted fiber waiting on `sessionModes`, so a profile composed
  * without `@omdsh-plugins/omdsh-basemode` loses two pills rather than a page.
+ * The chip still comes off that row, because the derived mode does not need
+ * the switch to know a conversation is a chat.
  * @module @omdsh-plugins/omdsh-chatmode/client
  */
 
@@ -31,6 +37,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // client-bundle purity error.
 import type { SessionModes } from '@omdsh-plugins/omdsh-basemode/client'
 import { ChatModeController } from './chat-mode.ts'
+import { watchHeroPicker } from './hero-picker.ts'
 import { ChatPinController } from './pin.ts'
 import { resolveServices } from './services.ts'
 import { MODE_COMMANDS, SHORTCUT_SERVICE, withChord, type IShortcutClient } from './shortcut.ts'
@@ -40,6 +47,8 @@ export type { ChatModeState, SessionMode } from './contract.ts'
 export type { ChatModeKey } from './locales.ts'
 export { ChatPinController, pinMove } from './pin.ts'
 export type { ChatPinDeps, PinMove } from './pin.ts'
+export { HIDE_ATTRIBUTE, PICKER_SLOT, paintHeroPicker, watchHeroPicker } from './hero-picker.ts'
+export type { HeroPickerDeps } from './hero-picker.ts'
 
 /**
  * Service name the segment registry is published under, by
@@ -175,6 +184,24 @@ export function apply(ctx: ClientContext): void {
     },
   })
   ctx.effect(() => pin.start(), 'omdsh-chatmode: the Chat workspace stays on top')
+
+  // The workspace chip on the new-session row. Chat has no project to pick,
+  // and the chip is not a published seat — ConversationRoot renders it as the
+  // button beside `conversation.hero.workspace` — so this marks it rather
+  // than replacing anything. A composition mounted outside a browser (a spec
+  // driving the plugin body) has no row to paint and nothing to undo.
+  ctx.effect(() => {
+    if (typeof document === 'undefined') return () => {}
+    const picker = watchHeroPicker({
+      root: document,
+      hidden: () => controller.store.getSnapshot().mode === 'chat',
+    })
+    const stop = controller.store.subscribe(picker.repaint)
+    return () => {
+      stop()
+      picker.dispose()
+    }
+  }, 'omdsh-chatmode: the workspace chip is not a project picker in Chat')
 
   // This package's two postures, on a RESTRICTED fiber: a profile composed
   // without `@omdsh-plugins/omdsh-basemode` has no switch for a segment to appear

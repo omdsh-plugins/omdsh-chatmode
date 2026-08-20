@@ -1,0 +1,14 @@
+/* The workspace chip on the new-session row, taken off while Chat is showing.
+
+   Deliberately not a class on our own element: the chip belongs to
+   ConversationRoot, whose class names are build-hashed. The rule is addressed
+   by the attribute hero-picker.ts writes onto that button. */
+
+/* Display, not visibility: the agent-preset chip is the control that remains,
+   and a gap where the folder was would still read as a project picker that
+   had broken. Specificity (0, 1, 1) beats the shipped `.workspace` class
+   (0, 1, 0) without shouting over it. */
+
+button[data-omdsh-chatmode-hide] {
+  display: none;
+}

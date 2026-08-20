@@ -1,7 +1,7 @@
 {
   "name": "@omdsh-plugins/omdsh-chatmode",
   "description": "Chat mode for the DeepSeek Harness web GUI: a Chat/Work switch above the conversation, and the managed Chat workspace its conversations are kept in, so a question that is not about a project does not need one",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -62,6 +62,7 @@
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
     "src/**/*.ts",
+    "src/**/*.css",
     "scripts/**/*.ts",
     "README.md",
     "README.zh.md"
